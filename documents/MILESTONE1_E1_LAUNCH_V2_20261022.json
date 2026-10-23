@@ -1,0 +1,25 @@
+{
+  "launcher_pid": 3456546,
+  "rank0_pid": 3456574,
+  "command": [
+    "/home/wxy/anaconda3/envs/text2video/bin/python",
+    "-m",
+    "torch.distributed.run",
+    "--standalone",
+    "--nproc_per_node=3",
+    "-m",
+    "t2v.train",
+    "--config",
+    "configs/milestone1/E1.yaml"
+  ],
+  "cuda_visible_devices": "0,1,2",
+  "world_size": 3,
+  "micro_batch_size": 1,
+  "gradient_accumulation_steps": 4,
+  "effective_batch_size": 12,
+  "out_dir": "/home/wxy/text2video/runs/m1_E1_base",
+  "launch_unix": 1792683502,
+  "note": "Restarted from scratch on 3 GPUs after the 4-GPU run (launcher 3446445, step 1110) was stopped per user GPU<=3 constraint; that run is archived at runs/m1_E1_base_4gpu_aborted_20261022. Recipe (batch 12 + README + test) committed as 97b9e9c after launch; training code unchanged by that commit. Run config.yaml records git_commit=85952a6 (launch HEAD).",
+  "launch_head": "85952a6",
+  "recipe_commit": "97b9e9c"
+}

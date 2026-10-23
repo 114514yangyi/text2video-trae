@@ -1,0 +1,31 @@
+{
+  "launcher_pid": 3446445,
+  "command": [
+    "/home/wxy/anaconda3/envs/text2video/bin/python",
+    "-m",
+    "torch.distributed.run",
+    "--standalone",
+    "--nproc_per_node=4",
+    "-m",
+    "t2v.train",
+    "--config",
+    "configs/milestone1/E1.yaml"
+  ],
+  "gpus": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "launch_unix": 1792679530.3674042,
+  "out_dir": "/home/wxy/text2video/runs/m1_E1_base",
+  "git_commit": "63f946fe8d296a878cf0a531df03fe72bfead171",
+  "aborted": {
+    "at_step": 1110,
+    "at_unix": 1792683336,
+    "reason": "user limited GPU usage to at most 3; 4-GPU run stopped",
+    "archived_to": "runs/m1_E1_base_4gpu_aborted_20261022",
+    "superseded_by": "MILESTONE1_E1_LAUNCH_V2_20261022.json",
+    "verified_artifacts": "step1000 last.pt (13.68 GiB) schema/EMA/optimizer/RNG checked; step1000 samples (2 videos, 61 files) written; raw/EMA load via MilestonePipeline verified"
+  }
+}

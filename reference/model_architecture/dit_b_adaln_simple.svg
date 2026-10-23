@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2200" height="870" viewBox="0 0 2200 870"><rect width="2200" height="870" fill="white"/><defs>
+<marker id="main" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#304e6a"/></marker>
+<marker id="skip" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#85909d"/></marker>
+<marker id="cond" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#ac7535"/></marker>
+<marker id="ctx" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#8861a8"/></marker>
+</defs>
+<text x="65" y="55" text-anchor="start" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="36" font-weight="500" fill="#26364b">(b) DiTBlock：主线传导、残差连接与 AdaLN-Zero 调制</text>
+<text x="65" y="96" text-anchor="start" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="25" font-weight="400" fill="#64748b">主线从左到右；三个子层各有一条独立的残差旁路。H 的形状始终为 [B,N,D]。</text>
+<rect x="65" y="145" width="385" height="110" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="2"/>
+<text x="257" y="183" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="27" font-weight="500" fill="#26364b">全局条件 c [B,D]</text>
+<text x="257" y="224" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#26364b">时间步 + 文本 / 参考池化 + 长度</text>
+<rect x="545" y="145" width="820" height="110" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="2"/>
+<text x="955" y="184" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="29" font-weight="500" fill="#26364b">一个 AdaLN-Zero 条件映射</text>
+<text x="955" y="225" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="25" font-weight="400" fill="#26364b">SiLU(c) → 零初始化 Linear → 各子层的 βₖ、γₖ、αₖ</text>
+<path d="M450 200 H545" fill="none" stroke="#ac7535" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#cond)"/>
+<text x="1770" y="181" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="400" fill="#ac7535">β：平移    γ：缩放    α：门控</text>
+<text x="1770" y="226" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="24" font-weight="400" fill="#ac7535">初始 β = γ = α = 0</text>
+<path d="M955 255 V290" fill="none" stroke="#ac7535" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 6"/>
+<path d="M300 290 H1640" fill="none" stroke="#ac7535" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 6"/>
+<path d="M300 290 V430" fill="none" stroke="#ac7535" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#cond)"/>
+<path d="M970 290 V430" fill="none" stroke="#ac7535" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#cond)"/>
+<path d="M1640 290 V430" fill="none" stroke="#ac7535" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#cond)"/>
+<rect x="1075" y="330" width="300" height="68" rx="10" fill="#f3edf9" stroke="#a78abf" stroke-width="2"/>
+<text x="1225" y="373" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#8861a8">原始 context C → K、V</text>
+<path d="M1225 398 V430" fill="none" stroke="#8861a8" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#ctx)"/>
+<rect x="230" y="430" width="380" height="150" rx="10" fill="#edf4fb" stroke="#7d9fbe" stroke-width="2"/>
+<text x="420" y="468" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#ac7535">LN + shift / scale</text>
+<text x="420" y="514" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="30" font-weight="500" fill="#26364b">Self-Attention</text>
+<text x="420" y="555" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#ac7535">输出 × gate αₖ</text>
+<path d="M610 505 H666" fill="none" stroke="#304e6a" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#main)"/>
+<circle cx="690" cy="505" r="24" fill="white" stroke="#304e6a" stroke-width="2.5"/>
+<text x="690" y="515" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="34" font-weight="400" fill="#26364b">+</text>
+<path d="M180 505 V650 H690 V529" fill="none" stroke="#85909d" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#skip)"/>
+<circle cx="180" cy="505" r="5" fill="#304e6a"/>
+<text x="420" y="640" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#788493">残差：直接保留该子层输入</text>
+<text x="420" y="713" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#526174">Q、K、V 来自调制后的 H</text>
+<rect x="900" y="430" width="380" height="150" rx="10" fill="#edf4fb" stroke="#7d9fbe" stroke-width="2"/>
+<text x="1090" y="468" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#ac7535">LN + shift / scale</text>
+<text x="1090" y="514" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="30" font-weight="500" fill="#26364b">Cross-Attention</text>
+<text x="1090" y="555" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#ac7535">输出 × gate αₖ</text>
+<path d="M1280 505 H1336" fill="none" stroke="#304e6a" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#main)"/>
+<circle cx="1360" cy="505" r="24" fill="white" stroke="#304e6a" stroke-width="2.5"/>
+<text x="1360" y="515" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="34" font-weight="400" fill="#26364b">+</text>
+<path d="M850 505 V650 H1360 V529" fill="none" stroke="#85909d" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#skip)"/>
+<circle cx="850" cy="505" r="5" fill="#304e6a"/>
+<text x="1090" y="640" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#788493">残差：直接保留该子层输入</text>
+<text x="1090" y="713" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#526174">Q 来自 H；K、V 来自 C</text>
+<rect x="1570" y="430" width="380" height="150" rx="10" fill="#edf4fb" stroke="#7d9fbe" stroke-width="2"/>
+<text x="1760" y="468" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#ac7535">LN + shift / scale</text>
+<text x="1760" y="514" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="30" font-weight="500" fill="#26364b">MLP / FFN</text>
+<text x="1760" y="555" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#ac7535">输出 × gate αₖ</text>
+<path d="M1950 505 H2006" fill="none" stroke="#304e6a" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#main)"/>
+<circle cx="2030" cy="505" r="24" fill="white" stroke="#304e6a" stroke-width="2.5"/>
+<text x="2030" y="515" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="34" font-weight="400" fill="#26364b">+</text>
+<path d="M1520 505 V650 H2030 V529" fill="none" stroke="#85909d" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#skip)"/>
+<circle cx="1520" cy="505" r="5" fill="#304e6a"/>
+<text x="1760" y="640" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#788493">残差：直接保留该子层输入</text>
+<text x="1760" y="713" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#526174">逐 token：D → 4D → D</text>
+<path d="M65 505 H230" fill="none" stroke="#304e6a" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#main)"/>
+<text x="100" y="475" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="30" font-weight="500" fill="#26364b">Hˡ</text>
+<path d="M714 505 H900" fill="none" stroke="#304e6a" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#main)"/>
+<path d="M1384 505 H1570" fill="none" stroke="#304e6a" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#main)"/>
+<path d="M2054 505 H2150" fill="none" stroke="#304e6a" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#main)"/>
+<text x="2105" y="475" text-anchor="middle" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="30" font-weight="500" fill="#26364b">Hˡ⁺¹</text>
+<text x="65" y="786" text-anchor="start" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="27" font-weight="400" fill="#26364b">每个子层：H′ = H + αₖ ⊙ Fₖ( (1+γₖ) ⊙ LN(H) + βₖ )</text>
+<path d="M1420 779 H1480" fill="none" stroke="#304e6a" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#main)"/>
+<text x="1495" y="787" text-anchor="start" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#26364b">正常传导</text>
+<path d="M1645 779 H1705" fill="none" stroke="#85909d" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#skip)"/>
+<text x="1720" y="787" text-anchor="start" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#26364b">残差旁路</text>
+<path d="M1870 779 H1930" fill="none" stroke="#ac7535" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#cond)"/>
+<text x="1945" y="787" text-anchor="start" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#26364b">条件调制</text>
+<text x="65" y="837" text-anchor="start" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#64748b">注：这里绘制共享 AdaLN 调制示意；cross-attention 的 Fₖ 还读取固定 context C。</text>
+</svg>

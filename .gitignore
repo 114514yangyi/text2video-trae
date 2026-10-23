@@ -1,0 +1,4 @@
+# 官方 DiT 上游克隆（facebookresearch/DiT，经 ghfast.top 镜像拉取），不入库，可随时重克隆
+/reference/DiT/
+__pycache__/
+*.pyc

@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2040" height="450" viewBox="30 135 2040 450">
+<rect width="2100" height="1740" fill="white" />
+<defs>
+<marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#536174" /></marker>
+<marker id="t" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#8861a8" /></marker>
+<marker id="v" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#3c7a9d" /></marker>
+<marker id="g" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#ac7535" /></marker>
+</defs>
+<text x="65" y="57" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="38" font-weight="500" fill="#26364b" text-anchor="start">DiT 内部：text_prefix 与条件注入</text>
+<text x="65" y="96" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#68768a" text-anchor="start">当前配置：text_prefix=True · reference=True · Expert AdaLN=True    |    D=768，P=L+128，N=P+T</text>
+<path d="M65 119 H2035" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" />
+<text x="65" y="158" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="28" font-weight="500" fill="#26364b" text-anchor="start">(a) context token 与 video token 沿序列维拼接</text>
+<rect x="65" y="190" width="190" height="110" rx="10" fill="#f3edf9" stroke="#a78abf" stroke-width="1.8" />
+<text x="160.0" y="224" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">文本</text>
+<text x="160.0" y="255" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">德语字幕</text>
+<rect x="300" y="190" width="220" height="110" rx="10" fill="#f3edf9" stroke="#a78abf" stroke-width="1.8" />
+<text x="410.0" y="224" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">mT5-base</text>
+<text x="410.0" y="255" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">[B,L,768]</text>
+<rect x="565" y="190" width="250" height="110" rx="10" fill="#f3edf9" stroke="#a78abf" stroke-width="1.8" />
+<text x="690.0" y="224" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">LayerNorm + Linear</text>
+<text x="690.0" y="255" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">文本投影 → D=768</text>
+<path d="M255 245 H300" stroke="#8861a8" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#t)" />
+<path d="M520 245 H565" stroke="#8861a8" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#t)" />
+<path d="M815 245 H860" stroke="#8861a8" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#t)" />
+<rect x="865" y="218" width="53" height="42" rx="5" fill="#e8dcf3" stroke="#a78abf" stroke-width="1.8" />
+<text x="891.5" y="246" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">t₁</text>
+<rect x="924" y="218" width="53" height="42" rx="5" fill="#e8dcf3" stroke="#a78abf" stroke-width="1.8" />
+<text x="950.5" y="246" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">t₂</text>
+<rect x="983" y="218" width="53" height="42" rx="5" fill="#e8dcf3" stroke="#a78abf" stroke-width="1.8" />
+<text x="1009.5" y="246" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">…</text>
+<rect x="1042" y="218" width="53" height="42" rx="5" fill="#e8dcf3" stroke="#a78abf" stroke-width="1.8" />
+<text x="1068.5" y="246" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">tL</text>
+<rect x="1108" y="218" width="53" height="42" rx="5" fill="#e4eee9" stroke="#83a28d" stroke-width="1.8" />
+<text x="1134.5" y="246" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">r₁</text>
+<rect x="1167" y="218" width="53" height="42" rx="5" fill="#e4eee9" stroke="#83a28d" stroke-width="1.8" />
+<text x="1193.5" y="246" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">…</text>
+<rect x="1226" y="218" width="53" height="42" rx="5" fill="#e4eee9" stroke="#83a28d" stroke-width="1.8" />
+<text x="1252.5" y="246" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">r₁₂₈</text>
+<text x="1090" y="196" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="24" font-weight="400" fill="#26364b" text-anchor="middle">C = [text tokens ; reference tokens]</text>
+<text x="1090" y="287" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">原始 context C : [B,P,D]，每层重复读取</text>
+<text x="575" y="336" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#65786c" text-anchor="start">参考帧 → 冻结图像编码 → 投影 → 128 个 reference tokens</text>
+<path d="M1240 329 V272" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<rect x="65" y="385" width="215" height="110" rx="10" fill="#eaf3fa" stroke="#719bb9" stroke-width="1.8" />
+<text x="172.5" y="419" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">带噪 latent xₜ</text>
+<text x="172.5" y="450" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">[B,T,1024]</text>
+<rect x="325" y="385" width="310" height="110" rx="10" fill="#eaf3fa" stroke="#719bb9" stroke-width="1.8" />
+<text x="480.0" y="419" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">Linear(1024→768)</text>
+<text x="480.0" y="450" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">+ 1D 位置编码 + MTG</text>
+<path d="M280 440 H325" stroke="#3c7a9d" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#v)" />
+<path d="M635 440 H865" stroke="#3c7a9d" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#v)" />
+<rect x="865" y="414" width="53" height="42" rx="5" fill="#dcecf8" stroke="#719bb9" stroke-width="1.8" />
+<text x="891.5" y="442" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">v₁</text>
+<rect x="924" y="414" width="53" height="42" rx="5" fill="#dcecf8" stroke="#719bb9" stroke-width="1.8" />
+<text x="950.5" y="442" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">v₂</text>
+<rect x="983" y="414" width="53" height="42" rx="5" fill="#dcecf8" stroke="#719bb9" stroke-width="1.8" />
+<text x="1009.5" y="442" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">…</text>
+<rect x="1042" y="414" width="53" height="42" rx="5" fill="#dcecf8" stroke="#719bb9" stroke-width="1.8" />
+<text x="1068.5" y="442" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">vT</text>
+<text x="1090" y="484" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">video tokens : [B,T,D]</text>
+<rect x="1510" y="270" width="480" height="145" rx="10" fill="#f5f7f9" stroke="#a6b2c1" stroke-width="1.8" />
+<text x="1750.0" y="304" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">Concat（dim=1）</text>
+<text x="1750.0" y="335" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">前缀 C + type_embedding(1)</text>
+<text x="1750.0" y="363" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">视频 V + type_embedding(0)</text>
+<path d="M1290 240 H1410 V310 H1510" stroke="#8861a8" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#t)" />
+<path d="M1100 435 H1410 V380 H1510" stroke="#3c7a9d" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#v)" />
+<path d="M1750 415 V459" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<rect x="1470" y="463" width="48" height="42" rx="5" fill="#e8dcf3" stroke="#a78abf" stroke-width="1.8" />
+<text x="1494.0" y="491" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">t₁</text>
+<rect x="1524" y="463" width="48" height="42" rx="5" fill="#e8dcf3" stroke="#a78abf" stroke-width="1.8" />
+<text x="1548.0" y="491" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">…</text>
+<rect x="1578" y="463" width="48" height="42" rx="5" fill="#e8dcf3" stroke="#a78abf" stroke-width="1.8" />
+<text x="1602.0" y="491" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">tL</text>
+<rect x="1632" y="463" width="48" height="42" rx="5" fill="#e4eee9" stroke="#83a28d" stroke-width="1.8" />
+<text x="1656.0" y="491" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">r₁</text>
+<rect x="1686" y="463" width="48" height="42" rx="5" fill="#e4eee9" stroke="#83a28d" stroke-width="1.8" />
+<text x="1710.0" y="491" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">…</text>
+<rect x="1740" y="463" width="48" height="42" rx="5" fill="#dcecf8" stroke="#719bb9" stroke-width="1.8" />
+<text x="1764.0" y="491" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">v₁</text>
+<rect x="1794" y="463" width="48" height="42" rx="5" fill="#dcecf8" stroke="#719bb9" stroke-width="1.8" />
+<text x="1818.0" y="491" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">…</text>
+<rect x="1848" y="463" width="48" height="42" rx="5" fill="#dcecf8" stroke="#719bb9" stroke-width="1.8" />
+<text x="1872.0" y="491" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="20" font-weight="400" fill="#26364b" text-anchor="middle">vT</text>
+<text x="1745" y="540" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="25" font-weight="500" fill="#26364b" text-anchor="middle">H⁰ = [C ; V]  →  [B,N,D]</text>
+<text x="65" y="557" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#536174" text-anchor="start">文本与视频 token 在同一个 self-attention 中双向交互；mask 屏蔽文本 padding 与无效帧。</text>
+<rect x="65" y="595" width="1970" height="710" rx="14" fill="#fcfdfe" stroke="#bdc8d5" stroke-width="1.8" />
+<text x="90" y="638" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="29" font-weight="500" fill="#26364b" text-anchor="start">(b) 单个 DiTBlock 展开 × 12 层（首层 Hˡ = H⁰，各层参数独立）</text>
+<rect x="100" y="670" width="390" height="130" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="1.8" />
+<text x="295.0" y="704" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">全局条件 c  [B,D]</text>
+<text x="295.0" y="735" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">t_embed + pooled_text</text>
+<text x="295.0" y="763" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">+ pooled_ref + length_embed</text>
+<rect x="640" y="670" width="910" height="98" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="1.8" />
+<text x="1095.0" y="704" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">AdaLN-Zero 条件映射</text>
+<text x="1095.0" y="735" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">SiLU(c) → 零初始化 Linear → shift β、scale γ、gate α</text>
+<path d="M490 724 H640" stroke="#ac7535" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#g)" />
+<text x="1785" y="708" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="25" font-weight="500" fill="#26364b" text-anchor="middle">Expert AdaLN</text>
+<text x="1785" y="742" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="21" font-weight="400" fill="#536174" text-anchor="middle">SA / MLP：前缀与视频分开调制</text>
+<text x="1785" y="772" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="21" font-weight="400" fill="#536174" text-anchor="middle">cross-attn：共享调制</text>
+<path d="M1100 768 V815 H710 V860" stroke="#ac7535" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#g)" stroke-dasharray="7 5" />
+<path d="M1100 815 H1220 V860" stroke="#ac7535" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#g)" stroke-dasharray="7 5" />
+<path d="M1220 815 H1730 V860" stroke="#ac7535" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#g)" stroke-dasharray="7 5" />
+<rect x="530" y="860" width="360" height="80" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="1.8" />
+<text x="710.0" y="894" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">AdaLN(H,c)</text>
+<text x="710.0" y="925" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">(1+γ) ⊙ LN(H) + β</text>
+<rect x="530" y="972" width="360" height="115" rx="10" fill="#eaf3fa" stroke="#719bb9" stroke-width="1.8" />
+<text x="710.0" y="1006" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">Self-Attention</text>
+<text x="710.0" y="1037" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">Q = H̃WQ</text>
+<text x="710.0" y="1065" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">K = H̃WK ；V = H̃WV</text>
+<path d="M710 940 V972" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<rect x="590" y="1110" width="240" height="66" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="1.8" />
+<text x="710.0" y="1144" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">Gate × α</text>
+<path d="M710 1087 V1110" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<path d="M710 1176 V1199" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<circle cx="710" cy="1220" r="21" fill="white" stroke="#536174" stroke-width="2" />
+<text x="710" y="1229" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="30" font-weight="400" fill="#26364b" text-anchor="middle">+</text>
+<text x="710" y="1277" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="21" font-weight="400" fill="#536174" text-anchor="middle">联合序列内部交互</text>
+<path d="M710 815 H920 V1143 H830" stroke="#ac7535" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#g)" stroke-dasharray="7 5" />
+<rect x="1040" y="860" width="360" height="80" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="1.8" />
+<text x="1220.0" y="894" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">AdaLN(H,c)</text>
+<text x="1220.0" y="925" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">(1+γ) ⊙ LN(H) + β</text>
+<rect x="1040" y="972" width="360" height="115" rx="10" fill="#eaf3fa" stroke="#719bb9" stroke-width="1.8" />
+<text x="1220.0" y="1006" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">Cross-Attention</text>
+<text x="1220.0" y="1037" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">Q = H̃WQ</text>
+<text x="1220.0" y="1065" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">K = CWK ；V = CWV</text>
+<path d="M1220 940 V972" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<rect x="1100" y="1110" width="240" height="66" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="1.8" />
+<text x="1220.0" y="1144" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">Gate × α</text>
+<path d="M1220 1087 V1110" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<path d="M1220 1176 V1199" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<circle cx="1220" cy="1220" r="21" fill="white" stroke="#536174" stroke-width="2" />
+<text x="1220" y="1229" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="30" font-weight="400" fill="#26364b" text-anchor="middle">+</text>
+<text x="1220" y="1277" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="21" font-weight="400" fill="#536174" text-anchor="middle">联合序列读取原始 context</text>
+<path d="M1220 815 H1430 V1143 H1340" stroke="#ac7535" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#g)" stroke-dasharray="7 5" />
+<rect x="1550" y="860" width="360" height="80" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="1.8" />
+<text x="1730.0" y="894" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">AdaLN(H,c)</text>
+<text x="1730.0" y="925" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">(1+γ) ⊙ LN(H) + β</text>
+<rect x="1550" y="972" width="360" height="115" rx="10" fill="#f5f7f9" stroke="#a6b2c1" stroke-width="1.8" />
+<text x="1730.0" y="1006" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">MLP / FFN</text>
+<text x="1730.0" y="1037" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">Linear(D→4D) → GELU</text>
+<text x="1730.0" y="1065" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">→ Linear(4D→D)</text>
+<path d="M1730 940 V972" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<rect x="1610" y="1110" width="240" height="66" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="1.8" />
+<text x="1730.0" y="1144" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">Gate × α</text>
+<path d="M1730 1087 V1110" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<path d="M1730 1176 V1199" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<circle cx="1730" cy="1220" r="21" fill="white" stroke="#536174" stroke-width="2" />
+<text x="1730" y="1229" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="30" font-weight="400" fill="#26364b" text-anchor="middle">+</text>
+<text x="1730" y="1277" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="21" font-weight="400" fill="#536174" text-anchor="middle">逐 token 前馈变换</text>
+<path d="M1730 815 H1940 V1143 H1850" stroke="#ac7535" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#g)" stroke-dasharray="7 5" />
+<rect x="90" y="1090" width="290" height="104" rx="10" fill="#f5f7f9" stroke="#a6b2c1" stroke-width="1.8" />
+<text x="235.0" y="1124" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">联合序列 Hˡ</text>
+<text x="235.0" y="1155" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">[B,N,D]</text>
+<path d="M380 1142 H450 V1220 H689" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<path d="M450 1142 V842 H710 V860" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<path d="M731 1220 H960 H1199" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<path d="M960 1220 V842 H1220 V860" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<path d="M1241 1220 H1470 H1709" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<path d="M1470 1220 V842 H1730 V860" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<path d="M1751 1220 H1995 V1175" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<text x="1960" y="1110" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="28" font-weight="400" fill="#26364b" text-anchor="middle">Hˡ⁺¹</text>
+<text x="1960" y="1140" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="21" font-weight="400" fill="#536174" text-anchor="middle">[B,N,D]</text>
+<rect x="90" y="882" width="290" height="120" rx="10" fill="#f3edf9" stroke="#a78abf" stroke-width="1.8" />
+<text x="235.0" y="916" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">原始 context C</text>
+<text x="235.0" y="947" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">[B,P,D]</text>
+<text x="235.0" y="975" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">不是更新后的前缀</text>
+<path d="M380 940 H410 V955 H1005 V1048 H1040" stroke="#8861a8" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#t)" />
+<text x="965" y="1017" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#8861a8" text-anchor="middle">K,V</text>
+<text x="100" y="1039" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="21" font-weight="400" fill="#ac7535" text-anchor="start">α、β、γ 初始为 0</text>
+<text x="100" y="1068" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="21" font-weight="400" fill="#536174" text-anchor="start">+ 为残差相加</text>
+<text x="65" y="1352" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="28" font-weight="500" fill="#26364b" text-anchor="start">(c) 只保留 video tokens，预测干净 latent，并计算 MSE</text>
+<rect x="65" y="1380" width="340" height="115" rx="10" fill="#eaf3fa" stroke="#719bb9" stroke-width="1.8" />
+<text x="235.0" y="1414" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">丢弃前缀 P 个 token</text>
+<text x="235.0" y="1445" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">H¹²[:, P:, :] → [B,T,D]</text>
+<rect x="460" y="1380" width="390" height="115" rx="10" fill="#fff4e4" stroke="#c59c63" stroke-width="1.8" />
+<text x="655.0" y="1414" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">FinalLayer</text>
+<text x="655.0" y="1445" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">AdaLN(c) + Linear(D→1024)</text>
+<path d="M405 1438 H460" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<rect x="910" y="1380" width="300" height="115" rx="10" fill="#eaf3fa" stroke="#719bb9" stroke-width="1.8" />
+<text x="1060.0" y="1414" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">预测 x̂₀</text>
+<text x="1060.0" y="1445" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">[B,T,1024]</text>
+<path d="M850 1438 H910" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<rect x="1350" y="1372" width="640" height="154" rx="10" fill="#f5f7f9" stroke="#a6b2c1" stroke-width="1.8" />
+<text x="1670.0" y="1406" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="26" font-weight="500" fill="#26364b" text-anchor="middle">均方误差损失 MSE</text>
+<text x="1670.0" y="1437" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">预测 x̂₀ 与干净 latent x₀ 比较</text>
+<text x="1670.0" y="1465" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">Lₘₛₑ = Σᵦ,ᵢ mᵦᵢ ‖x̂₀ᵦᵢ − x₀ᵦᵢ‖² / (1024 · Σᵦ,ᵢ mᵦᵢ)</text>
+<path d="M1210 1438 H1350" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" marker-end="url(#a)" />
+<text x="1670" y="1560" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="21" font-weight="400" fill="#536174" text-anchor="middle">m 为有效帧 mask；x₀ 与 x̂₀ 均在归一化 latent 空间</text>
+<path d="M65 1603 H2035" stroke="#536174" stroke-width="2.6" fill="none" stroke-linejoin="round" />
+<text x="65" y="1650" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#536174" text-anchor="start">紫色：context / 文本支路    蓝色：video / attention    橙色虚线：条件调制    +：残差相加</text>
+<text x="65" y="1697" font-family="Noto Sans CJK SC,DejaVu Sans,sans-serif" font-size="23" font-weight="400" fill="#536174" text-anchor="start">注：reference=False 时 P=L，前缀仅含 text tokens；本图按当前参考帧条件配置展开。</text>
+</svg>
