@@ -1,5 +1,22 @@
 # STRUCTURE — 项目结构
 
+## 2026-10-22 当前实现（优先阅读）
+
+当前 `milestone1-pixart` 从 c20c4a8 开始完成 M1 实现。以下旧版“45 文件/待实现”是历史状态。
+
+- `t2v/models/pixart.py`：PixArt adaLN-single、ConditionBag、无全局内容的 token 投影、cross/prefix/both、逐层注入、严格 block-only 预训练载入；生产尺寸28/1152/16，latent1024。
+- `t2v/models/factory.py`：训练/推理共用组装。
+- `t2v/adapters/text.py`：新增物理截断 num_layers；4c 保留 embedding+3block+finalnorm 并训练。
+- `t2v/train.py`：单卡/torchrun DDP，分桶有效batch、梯度累积、文本独立LR、可选motion、完整三模块CPU EMA与精确续训。
+- `t2v/milestone_runtime.py`：配置继承、本地路径重定位、CPU状态快照、原子存档、RNG状态。
+- `t2v/pipelines/milestone.py`：GT长度采样、首帧一次、固定前24帧解码、训练可视化，完整raw/EMA一致载入。
+- `tools/eval_milestone.py`：固定清单、显式pilot、官方FVD调用；`tools/eval_fvd.py` 新增迁移帧根路径、严格样本长度及本底报告。
+- `configs/milestone1/{base,E1..E10}.yaml`：全部十臂仅用配置切换；本轮只启动 E1。
+- 新测试：test_pixart/test_milestone_text/test_milestone_training/test_milestone_eval。
+
+实际24帧清单为 test640/642（两条不足24），`reports/eval/samples/m1_test_first24_ids.txt`；24帧从frame0开始的官方I3D-400本底84.297514，证据 `reports/eval/m1_first24_prepare_20261022/real_floor.json`。与旧16帧表不混。
+
+
 > 权威文档：根目录 `README.md`（目标/命令/产物/差异表）。本文件随代码结构变动同步维护。
 > 审计与改进方案：`.trae/documents/AUDIT.md`（2026-10-13 全链路审计，含发现/证据/修复/复测条件）。
 > **2026-10-12 建仓**：由 `../RefSign` 的 pose→video 路线派生出的新方向——

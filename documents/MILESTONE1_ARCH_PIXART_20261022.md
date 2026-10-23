@@ -399,3 +399,7 @@ M1.5 先用 1–2 个臂的短程训练跑通全链路（含 FVD 自检），确
 - 知识库：`.trae/` 不在 git 里，切分支不影响；本文件是新增文件，删掉即可。
 - 旧实验产物（`runs/`、`reports/`）未动；milestone-1 的产物应写到新的目录前缀
   （建议 `runs/m1_<臂名>/`、`reports/eval/m1_<臂名>/`），与旧表物理隔开。
+
+## 13. 目标机实测补记（2026-10-22，实现期）
+
+24帧有效N不再使用历史~613估计：当前冻结test642中640条num_frames>=24，两条短片跳过；清单 `reports/eval/samples/m1_test_first24_ids.txt`，SHA256=6f96ad9dda2721b877dea1f08dab7bbf17bb4c6bcb9d90becb665824a69110f6。官方I3D-400 logits/24连续帧/frame0起/224²/fulltest640 的真实split-half本底实测 **84.29751411436246**（原16帧本底不适用）。证据 `reports/eval/m1_first24_prepare_20261022/real_floor.json` 与 protocol.json。自检133.908176通过。该补记仅用实测值回填§2.1，不改变取帧规则。

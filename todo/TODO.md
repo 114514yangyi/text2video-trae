@@ -1221,11 +1221,44 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   仓库 201G → **96G**（回收 105G）。明细与回滚方式见 `.trae/documents/CLEANUP_20261022.md`。
   **未删**：`samples_*.pt`（0.48G）、`reports/eval/matrix`（37G 证据链）、`reports` 内旧生成视频（24.1G）。
 
-- [ ] **M1.1 起步待授权**：Q1–Q9 已全部裁决，规格无未决项；按「授权不延伸」不自动开工。
-- [ ] **M1.1** latent 契约落地 + 往返形状测试 → **M1.2** 骨架与逐层注入表 → **M1.3** 训练循环
-  → **M1.4** 评测链 → **M1.5** 单臂全链路验证 → **M1.6** 十臂矩阵（判据见规格第 9 节）。
-- [ ] **M1-测试**：在 `onvae` 环境跑 `python tests/run_all.py`，确认清场后保留的 13 个测试全绿
-  （当前 shell 无 torch，尚未验证）。
+- **D64 · 里程碑1 实现完成 + E1 base 启动（2026-10-22 用户授权"继续完成实现并开始跑第一个 base 实验"）**：
+  实现链 `730b3a6`/`da264fc`/`8733c10`/`c26dc71`/`d71b23d`/`131390b` + 评测修复 `85952a6`（独立复审通过，
+  见 `MILESTONE1_TASK3_REREVIEW_20261022.md`）；M1.1–M1.4 实现完成，M1.5 小尺寸全链路
+  （200 步训练→GT 长度生成→first24 官方 FVD pilot）已跑通但只作管线证据；全仓 **91 passed**
+  （Lead 22:43 独立复跑，`/tmp/m1-lead-final-suite-20261022.log`），十臂配置矩阵复核与规格 §5 一致。
+  **E1 已启动并完成首 checkpoint 验收**：4×RTX3090、effective batch16、`runs/m1_E1_base`、启动时 HEAD
+  `63f946f`、launcher PID 3446445；step1030 loss 0.031、~3.45s/步、峰值显存 16.6 GiB；
+  **step1000 `last.pt`（13.68 GiB）三模块 raw/EMA、优化器、RNG、config 全部校验通过，视觉回调 2 例 61 文件正常，
+  raw/EMA 均能经 `MilestonePipeline.from_checkpoint` 全尺寸载入**（证据见
+  `MILESTONE1_EXECUTION_20261022.md`「E1 产物验收」）。
+  **注意：该 4 卡启动随后按用户 GPU≤3 约束中止并按 D65 以 3 卡/batch12 从 0 重训**；4 卡产物归档保留。
+  E2–E10 只备配置、不排作业。
+- [ ] **M1.5（正式 E1 评测）**：30k 训完后用 `runs/m1_E1_base/final.pt` 按 first24 test640 协议生成+FVD
+  （raw 权重、DDIM50/CFG2/GT 长度/seed42，共享清单 `reports/eval/samples/m1_test_first24_ids.txt`）；
+  判据 = 非 NaN、不低于真值本底 84.2975（单侧）、同协议重复两次一致。产物写 `reports/eval/m1_E1_base/`，
+  结果登记 `EXPERIMENT.md` **exp-099**。正式 run 以 **D65 配方（3 卡 / effective batch12）** 从 0 重训：
+  每 1000 步的 `last.pt`（原子替换）与视觉回调自动产出，~3.77s/步、30k 预计 ~31h（约 10-24 07:00），
+  长程稳定性待观测；最终用 `runs/m1_E1_base/final.pt`。**权重口径默认 raw；是否同时报 EMA 待用户裁决**
+  （EMA 已随 checkpoint 完整保存且已验证可载入，`--use-ema` 可用）。
+- [ ] **M1.6 十臂矩阵**：M1.5 通过且用户明确授权后，再按 E2–E10 排作业（同一份 640 id、同采样器/CFG/
+  步数/长度口径/种子）；本轮不排。
+- [ ] **M1-评测 P3 残留（不阻塞 E1）**：① `tools/eval_fvd.py:398-400` 在 contiguous/24 下不可达，
+  仅在 `num_frames < min_frames` 的矛盾参数下误标长片，应改显式报错或删除；② `:393` 资格判断用偏移后
+  帧数，关 `--include-frame0` 时与"源 `num_frames>=24`"不一致（milestone wrapper 不受影响）；
+  ③ 契约只比路径字符串、FVD 真值缓存 key 无 frame_root/源指纹，换源时须 `--no-ref-cache`；
+  ④ 补测 vae/stats/frame_root 别名、fill-ref-cache 的 `skipped_short`、sampling 不一致拒绝。
+  复审见 `MILESTONE1_TASK3_REREVIEW_20261022.md`；清理后需重跑 `tests/test_eval_fvd.py`、`--self-check`
+  并确认共享真值本底不受影响。
+- **D65 · E1 改用 3 卡 + effective batch12（2026-10-22 用户约束）**：用户指令"不要四个 GPU 一起使用，
+  最多只能使用三个 GPU"。原 4 卡 E1 于 step1110 正常停止，产物归档 `runs/m1_E1_base_4gpu_aborted_20261022/`
+  （step1000 ckpt/回调已验收，保留）。因 effective batch16 不能被 `micro1×world3` 整除，用户选择
+  **3 卡 + microbatch1×accumulation4×world3 = effective batch12**；`configs/milestone1/base.yaml` 已改，
+  十臂共用；lr1e-4 / text lr1e-5 / seed42 / 30k / 其余配方不变。E1 从 0 重训（跨 world size 不能 resume），
+  启动于 23:36，launcher PID 3456546、rank0 PID 3456574，`runs/m1_E1_base`；
+  启动记录 `MILESTONE1_E1_LAUNCH_V2_20261022.json`。GPU0/1/2 各 ~18.8 GiB、GPU3 空闲。
+  实测 step1 loss 0.90315、step20 loss 0.69588、~3.77s/步、峰值16.59 GiB。配方改动提交 `97b9e9c`（README/base.yaml/十臂测试，训练代码不变），README 与实施计划已同步。
 
 
 - **D62 · 完整训练迁移包（2026-10-22 用户授权）**：保留全部项目代码/.git/.trae、冻结VAE项目代码和匹配psnr-best权重、离线mT5 PyTorch权重、完整v1缓存/文本/统计、当前PHOENIX train/dev/test帧。迁移入口在内存重定位路径，不修改冻结契约和源缓存；不打包历史runs/reports、Wan/SignViP大模型。打包产物 `/var/tmp/text2video_migration_20261022.zip`，包内 `migration/README.md` 记录安装和验证范围；源现存帧抽查256×256。对应F-015；目标机新环境安装/GPU训练仍需迁移后实测。
+
+- **D63 · 目标机训练环境配置与验证（2026-10-22 用户授权）**：已新建 conda `text2video`（Python3.12.15、torch2.6.0+cu124），安装迁移依赖和pytest。pip check通过；四张RTX3090 CUDA/bf16、真实缓存/mT5/DiT前向及冻结VAE单帧解码通过；128测试通过、9项Wan缺权重跳过；I3D自检133.91。实际可运行的是迁移DiT入口，PixArt里程碑未实现；未启动训练。环境与启动说明见 `ENVIRONMENT_SETUP_20261022.md`，包版本见 `ENVIRONMENT_PACKAGES_20261022.txt`。

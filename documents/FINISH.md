@@ -51,3 +51,12 @@
 ## F-015 · 完整训练迁移包（2026-10-22）
 
 来源D62。产物 `/var/tmp/text2video_migration_20261022.zip`，包含当前可训练DiT工作区2319729、完整Git历史/.trae、冻结TiTok-CVAE项目及匹配权重、离线mT5、完整v1数据和PHOENIX现存帧。迁移入口独立置于包内migration，不修改现有代码或冻结数据。源环境CPU检查已通过数据读取、文本编码、条件DiT前向、VAE冻结SHA和完整权重加载、帧路径重定位。目标机新环境安装及GPU训练待测试；源机包源SSL故障未能验证全新依赖安装，迁移requirements修正OpenCV/NumPy依赖声明冲突。包内README含详细边界。
+
+## F-016 · 里程碑1 PixArt 实现（M1.1–M1.4）与 E1 base 启动（2026-10-22）
+
+- 来源：TODO **D64**（用户授权"继续完成 milestone 实现并开始跑第一个 base 实验"）。
+- 产物：分支 `milestone1-pixart` 实现提交 `730b3a6`/`da264fc`/`8733c10`/`c26dc71`/`d71b23d`/`131390b` + 评测修复 `85952a6`；十臂配置 `configs/milestone1/{base,E1..E10}.yaml`；训练 `t2v/train.py`；采样/评测 `t2v/pipelines/milestone.py`、`tools/eval_milestone.py`；E1 运行目录 `runs/m1_E1_base/`（运行中）。
+- 复现命令：训练（用户约束 ≤3 GPU，D65 配方 batch12）`CUDA_VISIBLE_DEVICES=0,1,2 python -m torch.distributed.run --standalone --nproc_per_node=3 -m t2v.train --config configs/milestone1/E1.yaml`；评测 `python tools/eval_milestone.py --config runs/m1_E1_base/config.yaml --checkpoint runs/m1_E1_base/final.pt --out reports/eval/m1_E1_base --gpu cuda:0`。
+- 判据：first24 test 单侧官方 I3D-FVD（N=640/642、真值本底 84.2975），非 NaN、可复现两次；本轮无十臂对照结论。
+- 现状数字：全仓 **91 passed**（Lead 独立复跑 `/tmp/m1-lead-final-suite-20261022.log`）；小尺寸 pilot FVD 1532.37 仅管线证据，不进入正式表。E1 首启为 4 卡/batch16（step1110 时按用户 GPU≤3 约束中止并归档 `runs/m1_E1_base_4gpu_aborted_20261022/`，其 step1000 checkpoint 三模块 raw/EMA、优化器、RNG、config 与视觉回调均已验收）；**正式 run 为 3 卡/batch12 从 0 重训**（23:36 起，~3.77s/步、30k 预计 ~31h），正式 FVD 待 30k 训完。
+- 状态：**测试中**。日期：2026-10-22。
