@@ -1262,3 +1262,13 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
 - **D62 · 完整训练迁移包（2026-10-22 用户授权）**：保留全部项目代码/.git/.trae、冻结VAE项目代码和匹配psnr-best权重、离线mT5 PyTorch权重、完整v1缓存/文本/统计、当前PHOENIX train/dev/test帧。迁移入口在内存重定位路径，不修改冻结契约和源缓存；不打包历史runs/reports、Wan/SignViP大模型。打包产物 `/var/tmp/text2video_migration_20261022.zip`，包内 `migration/README.md` 记录安装和验证范围；源现存帧抽查256×256。对应F-015；目标机新环境安装/GPU训练仍需迁移后实测。
 
 - **D63 · 目标机训练环境配置与验证（2026-10-22 用户授权）**：已新建 conda `text2video`（Python3.12.15、torch2.6.0+cu124），安装迁移依赖和pytest。pip check通过；四张RTX3090 CUDA/bf16、真实缓存/mT5/DiT前向及冻结VAE单帧解码通过；128测试通过、9项Wan缺权重跳过；I3D自检133.91。实际可运行的是迁移DiT入口，PixArt里程碑未实现；未启动训练。环境与启动说明见 `ENVIRONMENT_SETUP_20261022.md`，包版本见 `ENVIRONMENT_PACKAGES_20261022.txt`。
+- **D66 · E7（base 骨架 + 前缀注入）3 卡实跑与 FVD 登记（2026-10-23 用户授权"先走 E7，用 3 个 GPU，测 FVD，记录结果"）**：
+  在目标机 `/data/huyang/trae_projects/text2video`（HEAD=4dd02e2）启动 `configs/milestone1/E7.yaml`
+  （factor1=**1b 前缀/context 注入**，其余因子全 base：4c+2a+3b+5b），GPU **0/4/5**（1×RTX4090 + 2×RTX3090；
+  其余卡被他人占用），effective batch12 = micro1×accum4×world3，30k 步，seed42，lr1e-4，EMA 0.9999。
+  VAE 通过 `vendor/TiTok_base/main → ../TiTok_base/main` 软链接入（`/vendor/` 已被 .gitignore 忽略，不入库）。
+  实测 ~2.5–2.8 s/步、峰值 13.6 GiB，step300 loss 0.098（step1 0.903）。
+  first24 协议已在本机复现：640/642、`real_floor`=**84.29751447172157**（与远程记录 84.2975141 一致）、
+  共享清单 `reports/eval/samples/m1_test_first24_ids.txt`（640 行）。
+  训练完成后由 `runs/m1_E7_chain.sh` 自动跑 `tools/eval_milestone.py` → `reports/eval/m1_E7_first24_20261024`，
+  结果登记 `EXPERIMENT.md`。⚠️ 与 E1（3×RTX3090）卡型不同（本 run 混用 4090+3090），对照表需备注该差异。
