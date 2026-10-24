@@ -1506,6 +1506,14 @@ SignViP `preprocess_single`（张量双线性、无抗锯齿）。`align_audit.p
 **FVD = 197.55**（N=613，本底 88.20）；帧 1 口径为 196.76（本底 88.31）。差 +0.4%，再次说明帧 0
 对齐只影响 ~1% 量级。日志 `reports/eval/logs/signvip_official_gen642_24f_256_f0.json`。
 
+## 2026-10-23 D57 · SignViP 50步完整生成重跑已完成
+
+2026-10-22 22:37:36（Asia/Shanghai）生成642/642及评测完成，所有进程退出0；代码2319729，产物 `reports/eval/signvip_paper_repro_20261022_v2`。原始210×260官方test与字幕、DDIM50/CFG3.5、完整EOS长度、context24/overlap2、fp16、参考帧0、官方视频编码及styleganv FVD函数。
+
+预声明四协议：前32帧短片末帧补齐 N642 **290.291187**；严格足32帧子集 N597 **308.710916**；全视频均匀16帧 N642 **73.669359**；GT起点后移1帧 N642 **289.375657**。生成短片35、真实短片17、合并45；严格子集差异包含换样本效应，不能全归因补帧。台账新增exp-100至103。
+
+10-23只读核验：五组特征均[642,400]、float64、有限；ID唯一且顺序匹配manifest；清单和代码SHA吻合。基于既有特征用独立对称PSD特征值公式重算四项，与JSON误差小于1e-8。论文Table3 **1025.45未复现**，不证明本机模型更强。论文完整FVD片段/样本/短片策略和最终发布权重版本对应关系尚未确认；不得推断论文N=10，也不得将小样本碰巧接近当成复现成功。
+
 ## 2026-10-22 · 目标机 conda 环境验证
 
 已配置独立 `text2video` 环境。依赖一致性、四卡CUDA/bf16、真实缓存→本地mT5→DiT前向、冻结VAE校验及单帧解码通过；128 passed / 9 skipped（Wan权重未打包）。I3D常量输入自检133.908176。迁移949332文件仅.git/index摘要不同，其余匹配。未启动训练、未实测batch16反向峰值显存。证据和启动命令：`ENVIRONMENT_SETUP_20261022.md`；决策D63。
@@ -1533,3 +1541,25 @@ R(2+1)D 口径（22–26）或 SignViP 32 帧/272×224 口径（156–260）数�
 **限制**：只有 30k 终点一个评估点（无中间 ckpt 的 FVD 曲线，P3 清理后可低成本补）；
 只测了 raw 权重，EMA 口径未测（用户待裁决）；batch 因用户 GPU≤3 约束由 16 改为 12（D65），
 与十臂后续必须保持同一 batch。
+
+## 2026-10-24 D66 · 里程碑1 E7（1b 前缀注入）30k 完成：first24 官方 I3D-FVD = 124.0733
+
+训练：`configs/milestone1/E7.yaml`（base + factor1=1b，其余因子 4c+2a+3b+5b）从 0 训 30k，三卡 0/4/5（1×RTX4090 + 2×RTX3090），micro1×accum4×world3 = effective batch12，seed42，bf16，EMA0.9999；10-23 14:11 → 10-24 13:00，82157 s（22.8 h），末段 2.81 s/步，峰值 13.58 GiB；loss 5k 0.0218 / 10k 0.0203 / 15k 0.0191 / 20k 0.0188 / 25k 0.0139 / 30k 0.0190，末 200 步均值 0.0166。
+
+评测：`tools/eval_milestone.py --config runs/m1_E7/config.yaml --checkpoint runs/m1_E7/final.pt --out reports/eval/m1_E7_first24_20261024 --gpu cuda:0`，13:01 开始、约 35 分钟完成 640/640 生成与 FVD。生成用 raw 权重（`ema_used=false`）、DDIM50、CFG2.0、GT 长度、seed42；FVD 用官方 I3D-K400 400d logits、24 帧连续起始、224²、float64 Fréchet，权重 sha256 `bec6519f…a5e2`。
+
+结果：**FVD 124.0732936749423**（N=640，`skipped_short: []`）；同批真值半分本底 `real_split_half_fvd` = **84.29751447172157**（与本机 `m1_first24_prepare_20261022/real_floor.json` 一致）；生成特征 L2 32.114±6.701。
+
+口径注意：① E1 base 的 30k 在 `/home/wxy` 主机上跑（`MILESTONE1_E1_LAUNCH*.json` 记录），本机无同口径 FVD，**不得**把 E7 与本机旧口径数字（R(2+1)D-18 / 240 prompts 等）横比；② 本 run 为 4090+2×3090 混卡，E1 为 3×3090，对照表须标卡型差异；③ 评测期间 `/data` 只剩 5.9 GiB，已删除与 `final.pt` 同为 step30000 的 `runs/m1_E7/last.pt`（12.3 GB）腾空间，`final.pt` 保留可复现（如需 resume 点，可由 `final.pt` 复制恢复）。
+
+## 2026-10-24 D67 · 强制SignViP原样FVD后E7重测与匹配对照
+
+用户要求正式FVD直接用SignViP源码。本轮把原始`metrics/fvd/styleganv/fvd.py`逐字保存到`third_party/signvip/fvd.py`（SHAc9a1acbf...fda37），入口`tools/eval_signvip_fvd.py`只负责IO/first24人口/统一源几何，预处理/特征提取/距离均调用原函数；权重SHA bec6519f...a5e2。`eval_milestone.py`和旧`eval_fvd.py`CLI统一走新入口。代码a7756ed，分支codex/signvip-first24-fvd-20261024。95项目测试通过，19项相关测试通过；官方常量视频自检133.6239。第三方源自身含一行尾空格，为保持逐字一致未改。
+
+既有E7 raw PNG首24、GT首24均256方形；新评测无抗锯齿（官方函数）、224中心裁剪。E7全640 **126.84746316**，真值半分84.88998481；旧本地实现124.07329367保留为历史值，当前正式SignViP实现以126.84746316为准。
+
+完整SignViP发布权重生成中有23条在E7清单内但不足24帧，不补帧，匹配交集617。两者用同GT、相同617ID、先256方形（SignViP输出由272×224转为256方形；E7/GT原本256方形不改变）、同官方预处理、同I3D和统计：**E7 128.47619769 vs SignViP 218.50745041**，共同真值半分89.08661494。之前无这一整套完全匹配的结果；旧613条24帧结果不是本轮对照。
+
+评测条件统一，不代表生成配方统一：E7 DDIM50/CFG2.0/GT长度/raw/PNG；SignViP DDIM50/CFG3.5/文本预测长度/官方MP4，参考首帧均有。故只报告此共享FVD协议下的实测，不能宣称论文1025.45已复现或所有生成变量完全受控。
+
+原始结果`reports/eval/m1_E7_signvip_first24_20261024/fvd.json`，全部特征/ID保存在同名npz，command/comparison_setup/code_version记录可追溯。已复读这些特征重新调用官方距离函数、核对640及617唯一ID与mask顺序、源码及wrapper SHA，一致。未训练、未重新生成、未删除旧产物。

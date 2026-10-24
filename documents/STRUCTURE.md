@@ -10,10 +10,10 @@
 - `t2v/train.py`：单卡/torchrun DDP，分桶有效batch、梯度累积、文本独立LR、可选motion、完整三模块CPU EMA与精确续训。
 - `t2v/milestone_runtime.py`：配置继承、本地路径重定位、CPU状态快照、原子存档、RNG状态。
 - `t2v/pipelines/milestone.py`：GT长度采样、首帧一次、固定前24帧解码、训练可视化，完整raw/EMA一致载入。
-- `tools/eval_milestone.py`：固定清单、显式pilot、生成后按 `--fvd-tool` 计分（**默认 signvip**，2026-10-24 规则；legacy 仅供历史复算）。
-- `tools/eval_fvd_signvip.py`：SignViP 官方 FVD 脚本的调用壳（帧协议 + 真值本底 + 缓存 + protocol/SHA256）。
-- `third_party/signvip_fvd/{fvd.py,calculate_fvd.py,__init__.py}`：SignViP 血统官方 FVD 实现（字节固定，见其 README）。
-- `tools/eval_fvd.py`：旧的仓库内 FVD 实现（I3D-K400 400d），2026-10-24 起仅用于历史数字复算/等价性诊断。
+- `tools/eval_milestone.py`：固定清单、显式pilot、生成后固定调用远程正式入口 `tools/eval_signvip_fvd.py` 计分。
+- `tools/eval_signvip_fvd.py`：SignViP 官方 FVD 脚本的调用壳（帧协议 + 真值本底 + 缓存 + protocol/SHA256）。
+- `third_party/signvip/fvd.py`：SignViP 血统官方 FVD 实现（字节固定，见其 README）。
+- `tools/eval_fvd.py`：旧的仓库内 FVD 实现（I3D-K400 400d），CLI 固定转入远程正式入口，旧 helpers 仅供历史测试/诊断导入。
 - `configs/milestone1/{base,E1..E10}.yaml`：全部十臂仅用配置切换；本轮只启动 E1。
 - 新测试：test_pixart/test_milestone_text/test_milestone_training/test_milestone_eval。
 
@@ -304,3 +304,5 @@ idea 从 FINISH 出池时回填终值与去向；第 5 节指标区由 `tools/co
   教师冻结，梯度仅穿过视频分支进入预测 x0；CFG 丢文本分支不受句子语义监督。
 
 - `tools/signvip/reproduce.py`：2026-10-22 SignViP发布权重论文条件重跑（原始test、50步完整生成、官方视频/FVD、固定清单及校验）；测试 `tests/test_signvip_reproduce.py`。
+
+- 2026-10-24 D67：正式FVD入口 `tools/eval_signvip_fvd.py`（只做数据IO/固定first24人口/调用）；原样第三方源码 `third_party/signvip/fvd.py` 校验SHA，预处理/特征/距离不再本地实现。`eval_milestone.py`和旧`eval_fvd.py` CLI统一转入此入口。

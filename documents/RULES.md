@@ -1,5 +1,20 @@
 # RULES — 对 agent 的约束
 
+## 2026-10-24 FVD 执行实现强制规则（用户最新指令，覆盖旧实现入口）
+
+所有正式 FVD 评测必须直接调用 SignViP 原样代码中的 `get_fvd_feats`（包含 `preprocess_single`）与 `frechet_distance`，禁止使用本地重新实现的预处理、特征统计和距离函数作为正式指标路径。原样源码固定在 `third_party/signvip/fvd.py`，SHA256 `c9a1acbf811c3050d92b5289f4a4789ba6209a71a5bafbeba10df5576ffbda37`；每次运行校验源码及I3D权重SHA，并在报告记录。数据读取/固定清单封装入口为 `tools/eval_signvip_fvd.py`；`eval_milestone.py` 只能调用此入口，旧 `eval_fvd.py` 的CLI也转入此入口。历史helper仅供旧测试/诊断导入，不是正式评测入口。
+
+里程碑当前协议：test、从源帧0起连续24帧、不补帧、GT与生成均足24；固定测试清单E7为640条。统一源几何256×256（PIL bilinear；E7与现有GT本已256方形，无额外重采样），再由SignViP原函数做短边224/中心裁剪/[-1,1]。跨SignViP对照必须共用同一真值、ID、源几何和代码；已发布完整生成视频中23条短于24，和E7共同617条，应同时报告E7全640和双方共同617，不将两种N混比。生成模型本身的CFG、长度来源与视频编码仍须分别声明。
+
+旧报告保留，旧FVD分数仅以其历史协议引用。规则修改前备份 `/tmp/text2video-fvd-policy-backup-20261024`；需要回滚可从该备份恢复原规则文件，代码改动由本轮分支提交追溯。
+
+## 2026-10-24 双仓库发布说明（用户授权）
+
+主仓库 `text2video` 继续整体忽略 `.trae/`；知识库已自成独立 Git 仓库 `text2video-trae`。
+用户授权提交/拉取/合并/推送“项目以及 .trae”时，必须分别操作两个仓库；禁止将嵌套 `.git`、
+机器状态、权重或实验视频误加入主仓库。下文第0节“不提交 .trae”指主仓库边界，
+不阻止用户明确授权的知识库独立仓库提交。正式FVD代码必须随主仓库发布，上述FVD规范与台账随知识库发布。
+
 ## 0. 知识库版本管理规范（2026-10-20 用户指令，**优先级高于本文其余全部执行偏好**）
 
 **`.trae/` 整个目录不进入 git 管理。**
@@ -110,10 +125,10 @@
    `FVD (I3D-K400 logits, 16 frames, 224², N=642)`。口径唯一来源是
    `.trae/documents/FVD_SPEC_20261021.md`。
    **2026-10-24 用户指令（优先级最高）：所有 FVD 测试必须使用 SignViP 的官方脚本** ——
-   实现 = `third_party/signvip_fvd/fvd.py`（SignViP 仓库 `metrics/fvd/styleganv/fvd.py` 的
-   字节固定副本，SHA256 `c9a1ac…da37`；`tools/eval_fvd_signvip.py` 调用其
-   `get_fvd_feats`/`frechet_distance`；`tools/eval_milestone.py` 默认 `--fvd-tool signvip`）。
-   `tools/eval_fvd.py` 只保留用于复算历史数字与等价性诊断，**不得再作为正式对比脚本**。
+   实现 = `third_party/signvip/fvd.py`（SignViP 仓库 `metrics/fvd/styleganv/fvd.py` 的
+   字节固定副本，SHA256 `c9a1ac…da37`；`tools/eval_signvip_fvd.py` 调用其
+   `get_fvd_feats`/`frechet_distance`；`tools/eval_milestone.py` 固定调用远程正式入口 `tools/eval_signvip_fvd.py`）。
+   `tools/eval_fvd.py` CLI 固定转入远程正式入口，旧 helpers 仅供历史测试/诊断导入，**不得再作为正式对比脚本**。
    新脚本以「字节 SHA256 锁定 + 与旧实现同输入特征逐位一致」作为校验（2026-10-24 实测
    max|Δfeature|=0、20 条 FVD 差 1.4×10⁻⁶）；旧脚本的 `--self-check`（≈131）只用于历史复算。
    - **旧口径作废**：`FVD (R(2+1)D-18 avgpool, 512-d)` 的 22–26 与 N=32 的 51.6–58.4
@@ -161,7 +176,7 @@
 
 6.1 **FVD 口径唯一来源（2026-10-21 用户指令；2026-10-24 脚本改判）**：`FVD_SPEC_20261021.md`
    是 FVD 的唯一规范；**所有正式 FVD 数字必须由 SignViP 官方脚本产生**
-   （`third_party/signvip_fvd/fvd.py`，经 `tools/eval_fvd_signvip.py`；见方法硬约束第 5 条），
+   （`third_party/signvip/fvd.py`，经 `tools/eval_signvip_fvd.py`；见方法硬约束第 5 条），
    报告中带 `protocol` 块（实现脚本 SHA256 / backbone / feature layer / frames / 分辨率 / N）与
    `real_split_half_fvd` 本底。旧 R(2+1)D 口径数字（22–26、51.6–58.4）**已作废**，
    只保留在历史日志与 `EXPERIMENT.md` 第 5 节自动生成区作追溯，不得用于任何比较或结论。

@@ -1174,7 +1174,7 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   故若指标不涨只能记「合并臂无增益」。`wan_flow_lora_v1{,_raw}` 因 mask bug 作废（见 NOTES 2026-10-20）。
   **状态（2026-10-20 11:45）**：链式流水线已起（`tools/run_stage2_chain.sh`），当前在跑 Wan VAE 编码（eval 全量 + train 每 8 条取 1），随后自动训桥、起 20k 训练、挂评测看守；`EXPERIMENT.md` 已预填 exp-090（进行中）。
 
-- [ ] **D57 · SignViP 论文条件重新复现（2026-10-22 用户授权）**：使用原始 210×260 官方 test642 数据和字幕，50步/CFG3.5、完整EOS长度、官方视频编解码与FVD函数；独立产物 `reports/eval/signvip_paper_repro_20261022_v2`。主报告固定32帧、短片末帧补齐全642，同时预先声明严格32帧子集、全视频均匀16帧及GT首帧偏移敏感性；未知论文窗口/N不作推断，不通过改变N匹配1025.45。分支 `codex/signvip-paper-repro-20261022`，实现提交 `2319729`。已完成原始642条视频准备与首例冒烟（24帧/18.5s）；GPU1/4两分片全量生成已启动，supervisor PID3970442，完成后自动官方FVD；状态见产物目录 `pipeline_status.json`。执行中。
+- **D57 · SignViP 论文条件重新复现（2026-10-22 用户授权）**：使用原始 210×260 官方 test642 数据和字幕，50步/CFG3.5、完整EOS长度、官方视频编解码与FVD函数；独立产物 `reports/eval/signvip_paper_repro_20261022_v2`。主报告固定32帧、短片末帧补齐全642，同时预先声明严格32帧子集、全视频均匀16帧及GT首帧偏移敏感性；未知论文窗口/N不作推断，不通过改变N匹配1025.45。分支 `codex/signvip-paper-repro-20261022`，实现提交 `2319729`。已完成原始642条视频准备与首例冒烟（24帧/18.5s）；GPU1/4两分片全量生成已启动，supervisor PID3970442；**已完成**：2026-10-22 22:37生成642/642及评测退出0。前32补齐FVD290.291187(N642)、严格32为308.710916(N597)、uniform16为73.669359(N642)、GT偏移1为289.375657(N642)。论文1025.45未复现；结论/证据见NOTES 2026-10-23 D57及exp-100至103；完整论文协议待作者确认。
 
 ---
 
@@ -1261,11 +1261,11 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   micro1×accum6×world2 = effective batch12（与 E1 等价）；参数 821.92M。权重/输出写
   **`/data1/huyang/text2video/runs/m1_E2/`**（用户重申所有权重放 /data1/huyang，arm 配置已是绝对路径）。
   已挂**自动评测链** `/tmp/m1_E2_chain.sh`（nohup）：等训练 `complete` → 选一张空闲 GPU → 按 first24
-  test640 协议评测 `reports/eval/m1_E2`；结果登记 exp-100。预计 30k ≈ 34h（约 10-25 22:00 前后）。
+  test640 协议评测 `reports/eval/m1_E2`；结果登记 exp-108。预计 30k ≈ 34h（约 10-25 22:00 前后）。
 - **D70 · 所有 FVD 测试改用 SignViP 官方脚本（2026-10-24 用户指令）**：以后所有 FVD 测试
-  **必须使用 SignViP 的官方脚本**。落地：vendor `third_party/signvip_fvd/fvd.py`
-  （SignViP 仓库 `metrics/fvd/styleganv/fvd.py` 血统；SHA256 `c9a1ac…da37`）+ `tools/eval_fvd_signvip.py`
-  调用其 `get_fvd_feats`/`frechet_distance`；`tools/eval_milestone.py` 默认 `--fvd-tool signvip`；
+  **必须使用 SignViP 的官方脚本**。落地：vendor `third_party/signvip/fvd.py`
+  （SignViP 仓库 `metrics/fvd/styleganv/fvd.py` 血统；SHA256 `c9a1ac…da37`）+ `tools/eval_signvip_fvd.py`
+  调用其 `get_fvd_feats`/`frechet_distance`；`tools/eval_milestone.py` 固定调用远程正式入口 `tools/eval_signvip_fvd.py`；
   旧 `tools/eval_fvd.py` 只用于历史复算/等价性诊断。帧协议不变（first24 含 frame0、GT 长度、
   test640、DDIM50/CFG2、raw）；预处理改为 SignViP `preprocess_single`（无抗锯齿）。
   规则写入 `RULES.md` 方法约束 5/评测 6.1/探索 19、`AGENTS.md` 方法约束 5、`FVD_SPEC` §0.0、
@@ -1295,3 +1295,10 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
 - **D62 · 完整训练迁移包（2026-10-22 用户授权）**：保留全部项目代码/.git/.trae、冻结VAE项目代码和匹配psnr-best权重、离线mT5 PyTorch权重、完整v1缓存/文本/统计、当前PHOENIX train/dev/test帧。迁移入口在内存重定位路径，不修改冻结契约和源缓存；不打包历史runs/reports、Wan/SignViP大模型。打包产物 `/var/tmp/text2video_migration_20261022.zip`，包内 `migration/README.md` 记录安装和验证范围；源现存帧抽查256×256。对应F-015；目标机新环境安装/GPU训练仍需迁移后实测。
 
 - **D63 · 目标机训练环境配置与验证（2026-10-22 用户授权）**：已新建 conda `text2video`（Python3.12.15、torch2.6.0+cu124），安装迁移依赖和pytest。pip check通过；四张RTX3090 CUDA/bf16、真实缓存/mT5/DiT前向及冻结VAE单帧解码通过；128测试通过、9项Wan缺权重跳过；I3D自检133.91。实际可运行的是迁移DiT入口，PixArt里程碑未实现；未启动训练。环境与启动说明见 `ENVIRONMENT_SETUP_20261022.md`，包版本见 `ENVIRONMENT_PACKAGES_20261022.txt`。
+
+
+- **D67 · FVD强制SignViP原样实现及E7重测（2026-10-24用户指令）**：本轮执行只读旧产物；源码固定third_party/signvip/fvd.py，所有正式CLI改走tools/eval_signvip_fvd.py，E7原640重测并与完整SignViP生成在共同617条first24/256方形/同GT/无补帧下比较。只重测已有视频，不训练、不重新生成。新结果目录reports/eval/m1_E7_signvip_first24_20261024，旧报告保留。规则备份/tmp/text2video-fvd-policy-backup-20261024，分支codex/signvip-first24-fvd-20261024。**已完成**：提交a7756ed；95测试通过；E7全640新FVD126.84746316，共同617的E7=128.47619769、SignViP=218.50745041；见NOTES D67及新台账行。
+
+- **D68 · 双仓库同步发布与FVD规则固化（2026-10-24用户授权）**：主项目text2video与独立知识库text2video-trae分别提交、拉取、合并并推送各自main；SignViP原样源码/入口/测试随主项目发布，AGENTS/README及知识库RULES/FVD_SPEC明确以后强制此实现。权重、runs/reports和嵌套.git不并入主仓库；保留全部历史结果。
+
+- **D71 · FVD 统一远程正式入口（2026-10-24 用户裁决）**：以远程 `tools/eval_signvip_fvd.py` + `third_party/signvip/fvd.py` 为唯一 FVD 测试入口，移除本地重复 runner/vendor 和对应测试，不保留 legacy 选择；旧自动链的 `--fvd-tool signvip` 仅作兼容参数，仍固定进入远程脚本。旧 `tools/eval_fvd.py` CLI 已委托正式入口；历史结果保留且不与新口径混表。E2 新台账编号 exp-108，避免与远程 D57 的 exp-100 冲突；本地训练产物未删除。双仓库分别合并并推送 main。
