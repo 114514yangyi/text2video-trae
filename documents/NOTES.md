@@ -1517,3 +1517,13 @@ SignViP `preprocess_single`（张量双线性、无抗锯齿）。`align_audit.p
 ## 2026-10-22 · 目标机 conda 环境验证
 
 已配置独立 `text2video` 环境。依赖一致性、四卡CUDA/bf16、真实缓存→本地mT5→DiT前向、冻结VAE校验及单帧解码通过；128 passed / 9 skipped（Wan权重未打包）。I3D常量输入自检133.908176。迁移949332文件仅.git/index摘要不同，其余匹配。未启动训练、未实测batch16反向峰值显存。证据和启动命令：`ENVIRONMENT_SETUP_20261022.md`；决策D63。
+
+## 2026-10-24 D66 · 里程碑1 E7（1b 前缀注入）30k 完成：first24 官方 I3D-FVD = 124.0733
+
+训练：`configs/milestone1/E7.yaml`（base + factor1=1b，其余因子 4c+2a+3b+5b）从 0 训 30k，三卡 0/4/5（1×RTX4090 + 2×RTX3090），micro1×accum4×world3 = effective batch12，seed42，bf16，EMA0.9999；10-23 14:11 → 10-24 13:00，82157 s（22.8 h），末段 2.81 s/步，峰值 13.58 GiB；loss 5k 0.0218 / 10k 0.0203 / 15k 0.0191 / 20k 0.0188 / 25k 0.0139 / 30k 0.0190，末 200 步均值 0.0166。
+
+评测：`tools/eval_milestone.py --config runs/m1_E7/config.yaml --checkpoint runs/m1_E7/final.pt --out reports/eval/m1_E7_first24_20261024 --gpu cuda:0`，13:01 开始、约 35 分钟完成 640/640 生成与 FVD。生成用 raw 权重（`ema_used=false`）、DDIM50、CFG2.0、GT 长度、seed42；FVD 用官方 I3D-K400 400d logits、24 帧连续起始、224²、float64 Fréchet，权重 sha256 `bec6519f…a5e2`。
+
+结果：**FVD 124.0732936749423**（N=640，`skipped_short: []`）；同批真值半分本底 `real_split_half_fvd` = **84.29751447172157**（与本机 `m1_first24_prepare_20261022/real_floor.json` 一致）；生成特征 L2 32.114±6.701。
+
+口径注意：① E1 base 的 30k 在 `/home/wxy` 主机上跑（`MILESTONE1_E1_LAUNCH*.json` 记录），本机无同口径 FVD，**不得**把 E7 与本机旧口径数字（R(2+1)D-18 / 240 prompts 等）横比；② 本 run 为 4090+2×3090 混卡，E1 为 3×3090，对照表须标卡型差异；③ 评测期间 `/data` 只剩 5.9 GiB，已删除与 `final.pt` 同为 step30000 的 `runs/m1_E7/last.pt`（12.3 GB）腾空间，`final.pt` 保留可复现（如需 resume 点，可由 `final.pt` 复制恢复）。

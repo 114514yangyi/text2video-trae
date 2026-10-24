@@ -60,3 +60,12 @@
 - 判据：first24 test 单侧官方 I3D-FVD（N=640/642、真值本底 84.2975），非 NaN、可复现两次；本轮无十臂对照结论。
 - 现状数字：全仓 **91 passed**（Lead 独立复跑 `/tmp/m1-lead-final-suite-20261022.log`）；小尺寸 pilot FVD 1532.37 仅管线证据，不进入正式表。E1 首启为 4 卡/batch16（step1110 时按用户 GPU≤3 约束中止并归档 `runs/m1_E1_base_4gpu_aborted_20261022/`，其 step1000 checkpoint 三模块 raw/EMA、优化器、RNG、config 与视觉回调均已验收）；**正式 run 为 3 卡/batch12 从 0 重训**（23:36 起，~3.77s/步、30k 预计 ~31h），正式 FVD 待 30k 训完。
 - 状态：**测试中**。日期：2026-10-22。
+
+## F-017 · 里程碑1 E7（base + 前缀注入）30k 训练与 first24 官方 I3D-FVD（2026-10-24）
+
+- 来源：TODO **D66**（用户授权"先走 E7，用 3 个 GPU，测 FVD，记录结果"）。
+- 产物：`runs/m1_E7/`（`config.yaml`、`final.pt` 12.3 GB、`metrics.jsonl`、`samples/`、`status.json`）、`runs/m1_E7_report.py`；`reports/eval/m1_E7_first24_20261024/`（`ids.txt`、`protocol.json`、`fvd.json`、`frames/`）；共享 ids `reports/eval/samples/m1_test_first24_ids.txt`；本机真值本底 `reports/eval/m1_first24_prepare_20261022/real_floor.json`。
+- 复现命令：训练 `CUDA_VISIBLE_DEVICES=0,4,5 python -m torch.distributed.run --standalone --nproc_per_node=3 -m t2v.train --config configs/milestone1/E7.yaml`（本机实例实际写作 `--out-dir runs/m1_E7`，日志 `runs/m1_E7.console.log`）；评测 `python tools/eval_milestone.py --config runs/m1_E7/config.yaml --checkpoint runs/m1_E7/final.pt --out reports/eval/m1_E7_first24_20261024 --gpu cuda:0`；自动链 `runs/m1_E7_chain.sh`（等 `final.pt` 出现即评测）。
+- 判据/数字：30k 步 22.8 h（末段 2.81 s/步，峰值 13.58 GiB，3 卡 effective batch12，RTX4090+2×RTX3090 混卡）；**FVD 124.073294**（N=640），真值半分本底 84.297514，相对本底 **+47.2%**；生成特征 L2 32.114±6.701。
+- 状态：**已完成待裁决**——E1 base 同口径 FVD 未在本机产出（E1 运行在 `/home/wxy` 主机），本轮只有单点基准，不能与 E1 比较，也不能据此判断"换注入通路更优/更差"。
+- 日期：2026-10-24。
