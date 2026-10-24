@@ -1263,3 +1263,7 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
 
 - **D63 · 目标机训练环境配置与验证（2026-10-22 用户授权）**：已新建 conda `text2video`（Python3.12.15、torch2.6.0+cu124），安装迁移依赖和pytest。pip check通过；四张RTX3090 CUDA/bf16、真实缓存/mT5/DiT前向及冻结VAE单帧解码通过；128测试通过、9项Wan缺权重跳过；I3D自检133.91。实际可运行的是迁移DiT入口，PixArt里程碑未实现；未启动训练。环境与启动说明见 `ENVIRONMENT_SETUP_20261022.md`，包版本见 `ENVIRONMENT_PACKAGES_20261022.txt`。
 
+
+- **D67 · FVD强制SignViP原样实现及E7重测（2026-10-24用户指令）**：本轮执行只读旧产物；源码固定third_party/signvip/fvd.py，所有正式CLI改走tools/eval_signvip_fvd.py，E7原640重测并与完整SignViP生成在共同617条first24/256方形/同GT/无补帧下比较。只重测已有视频，不训练、不重新生成。新结果目录reports/eval/m1_E7_signvip_first24_20261024，旧报告保留。规则备份/tmp/text2video-fvd-policy-backup-20261024，分支codex/signvip-first24-fvd-20261024。**已完成**：提交a7756ed；95测试通过；E7全640新FVD126.84746316，共同617的E7=128.47619769、SignViP=218.50745041；见NOTES D67及新台账行。
+
+- **D68 · 双仓库同步发布与FVD规则固化（2026-10-24用户授权）**：主项目text2video与独立知识库text2video-trae分别提交、拉取、合并并推送各自main；SignViP原样源码/入口/测试随主项目发布，AGENTS/README及知识库RULES/FVD_SPEC明确以后强制此实现。权重、runs/reports和嵌套.git不并入主仓库；保留全部历史结果。

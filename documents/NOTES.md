@@ -1527,3 +1527,15 @@ SignViP `preprocess_single`（张量双线性、无抗锯齿）。`align_audit.p
 结果：**FVD 124.0732936749423**（N=640，`skipped_short: []`）；同批真值半分本底 `real_split_half_fvd` = **84.29751447172157**（与本机 `m1_first24_prepare_20261022/real_floor.json` 一致）；生成特征 L2 32.114±6.701。
 
 口径注意：① E1 base 的 30k 在 `/home/wxy` 主机上跑（`MILESTONE1_E1_LAUNCH*.json` 记录），本机无同口径 FVD，**不得**把 E7 与本机旧口径数字（R(2+1)D-18 / 240 prompts 等）横比；② 本 run 为 4090+2×3090 混卡，E1 为 3×3090，对照表须标卡型差异；③ 评测期间 `/data` 只剩 5.9 GiB，已删除与 `final.pt` 同为 step30000 的 `runs/m1_E7/last.pt`（12.3 GB）腾空间，`final.pt` 保留可复现（如需 resume 点，可由 `final.pt` 复制恢复）。
+
+## 2026-10-24 D67 · 强制SignViP原样FVD后E7重测与匹配对照
+
+用户要求正式FVD直接用SignViP源码。本轮把原始`metrics/fvd/styleganv/fvd.py`逐字保存到`third_party/signvip/fvd.py`（SHAc9a1acbf...fda37），入口`tools/eval_signvip_fvd.py`只负责IO/first24人口/统一源几何，预处理/特征提取/距离均调用原函数；权重SHA bec6519f...a5e2。`eval_milestone.py`和旧`eval_fvd.py`CLI统一走新入口。代码a7756ed，分支codex/signvip-first24-fvd-20261024。95项目测试通过，19项相关测试通过；官方常量视频自检133.6239。第三方源自身含一行尾空格，为保持逐字一致未改。
+
+既有E7 raw PNG首24、GT首24均256方形；新评测无抗锯齿（官方函数）、224中心裁剪。E7全640 **126.84746316**，真值半分84.88998481；旧本地实现124.07329367保留为历史值，当前正式SignViP实现以126.84746316为准。
+
+完整SignViP发布权重生成中有23条在E7清单内但不足24帧，不补帧，匹配交集617。两者用同GT、相同617ID、先256方形（SignViP输出由272×224转为256方形；E7/GT原本256方形不改变）、同官方预处理、同I3D和统计：**E7 128.47619769 vs SignViP 218.50745041**，共同真值半分89.08661494。之前无这一整套完全匹配的结果；旧613条24帧结果不是本轮对照。
+
+评测条件统一，不代表生成配方统一：E7 DDIM50/CFG2.0/GT长度/raw/PNG；SignViP DDIM50/CFG3.5/文本预测长度/官方MP4，参考首帧均有。故只报告此共享FVD协议下的实测，不能宣称论文1025.45已复现或所有生成变量完全受控。
+
+原始结果`reports/eval/m1_E7_signvip_first24_20261024/fvd.json`，全部特征/ID保存在同名npz，command/comparison_setup/code_version记录可追溯。已复读这些特征重新调用官方距离函数、核对640及617唯一ID与mask顺序、源码及wrapper SHA，一致。未训练、未重新生成、未删除旧产物。

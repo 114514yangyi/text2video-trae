@@ -301,3 +301,5 @@ idea 从 FINISH 出池时回填终值与去向；第 5 节指标区由 `tools/co
   教师冻结，梯度仅穿过视频分支进入预测 x0；CFG 丢文本分支不受句子语义监督。
 
 - `tools/signvip/reproduce.py`：2026-10-22 SignViP发布权重论文条件重跑（原始test、50步完整生成、官方视频/FVD、固定清单及校验）；测试 `tests/test_signvip_reproduce.py`。
+
+- 2026-10-24 D67：正式FVD入口 `tools/eval_signvip_fvd.py`（只做数据IO/固定first24人口/调用）；原样第三方源码 `third_party/signvip/fvd.py` 校验SHA，预处理/特征/距离不再本地实现。`eval_milestone.py`和旧`eval_fvd.py` CLI统一转入此入口。
