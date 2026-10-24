@@ -10,7 +10,10 @@
 - `t2v/train.py`：单卡/torchrun DDP，分桶有效batch、梯度累积、文本独立LR、可选motion、完整三模块CPU EMA与精确续训。
 - `t2v/milestone_runtime.py`：配置继承、本地路径重定位、CPU状态快照、原子存档、RNG状态。
 - `t2v/pipelines/milestone.py`：GT长度采样、首帧一次、固定前24帧解码、训练可视化，完整raw/EMA一致载入。
-- `tools/eval_milestone.py`：固定清单、显式pilot、官方FVD调用；`tools/eval_fvd.py` 新增迁移帧根路径、严格样本长度及本底报告。
+- `tools/eval_milestone.py`：固定清单、显式pilot、生成后按 `--fvd-tool` 计分（**默认 signvip**，2026-10-24 规则；legacy 仅供历史复算）。
+- `tools/eval_fvd_signvip.py`：SignViP 官方 FVD 脚本的调用壳（帧协议 + 真值本底 + 缓存 + protocol/SHA256）。
+- `third_party/signvip_fvd/{fvd.py,calculate_fvd.py,__init__.py}`：SignViP 血统官方 FVD 实现（字节固定，见其 README）。
+- `tools/eval_fvd.py`：旧的仓库内 FVD 实现（I3D-K400 400d），2026-10-24 起仅用于历史数字复算/等价性诊断。
 - `configs/milestone1/{base,E1..E10}.yaml`：全部十臂仅用配置切换；本轮只启动 E1。
 - 新测试：test_pixart/test_milestone_text/test_milestone_training/test_milestone_eval。
 

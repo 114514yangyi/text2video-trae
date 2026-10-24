@@ -403,3 +403,8 @@ M1.5 先用 1–2 个臂的短程训练跑通全链路（含 FVD 自检），确
 ## 13. 目标机实测补记（2026-10-22，实现期）
 
 24帧有效N不再使用历史~613估计：当前冻结test642中640条num_frames>=24，两条短片跳过；清单 `reports/eval/samples/m1_test_first24_ids.txt`，SHA256=6f96ad9dda2721b877dea1f08dab7bbf17bb4c6bcb9d90becb665824a69110f6。官方I3D-400 logits/24连续帧/frame0起/224²/fulltest640 的真实split-half本底实测 **84.29751411436246**（原16帧本底不适用）。证据 `reports/eval/m1_first24_prepare_20261022/real_floor.json` 与 protocol.json。自检133.908176通过。该补记仅用实测值回填§2.1，不改变取帧规则。
+
+**E1 base 实测补记（2026-10-24）**：E1 按 30k 步（3 卡、有效 batch12、D65）训完后正式评测：
+first24/N=640、raw 权重、DDIM50/CFG2/GT 长度/seed42 下 **FVD = 126.92693857176755**
+（真值本底 84.29751411436246）；同协议第二次评测逐位相同，M1.5 判据通过。该数字是十臂矩阵的
+唯一分母，证据 `reports/eval/m1_E1_base{,_repeat}/` 与 `NOTES.md` 2026-10-24 条。

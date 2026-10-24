@@ -46,3 +46,29 @@
 - 实测：dataset=7021、world3 / accum4 / effective batch12；step1 loss 0.90315 / grad 0.3451 / 峰值13.73 GiB；step10 loss 0.85899、**3.77 s/步**、峰值16.59 GiB；step20 loss 0.69588、grad 有限；GPU0/1/2 各约 18.8 GiB、**GPU3 空闲（26MiB）**，符合 ≤3 卡约束。按 ~3.77s/步 预计 30k ≈ **31 h**（约 2026-10-24 07:00 前后），每 1000 步（约 63 min）存 `last.pt` 并出视觉回调。
 - 磁盘：4 卡归档占 14 GiB 后仍余 42 GiB；新 run `last.pt` 约 13.7 GiB，原子替换瞬时需额外 ~14 GiB，最紧时（末次 `final.pt`）余量约 14 GiB，可运行。若要回收空间，可在确认后删除 4 卡归档的 `last.pt`（保留样本/日志/metrics）。
 - E2–E10 仅实现配置与支持，本轮不排作业；完整十臂结果不属于“软件已实现”的声明，后续按 TODO 与 EXPERIMENT 更新。
+
+## E1 训练完成（2026-10-24 07:40）
+- 正式 run（3 卡 / effective batch12）跑到 **step 30000**，`status.json` 转 `complete`，总耗时 **115,309.58 s = 32 h 01 m**（2026-10-22 23:38 → 2026-10-24 07:40）；训练进程已退出，GPU 全部释放。
+- 产物：`runs/m1_E1_base/{final.pt,last.pt}` 各 14,688,143,110 / 14,688,140,689 B（13.68 GiB）；30 组视觉回调（step1000…step30000）；`metrics.jsonl` 3001 条日志。
+- loss 曲线（每 3000 步均值）：0.0657 → 0.0266 → 0.0253 → 0.0225 → 0.0210 → 0.0199 → 0.0189 → 0.0184 → 0.0182 → **0.0176**；末 1000 步 3.84 s/步；全程无 NaN/发散，峰值显存 16.60 GiB。
+- `final.pt` CPU 独立校验：`version=t2v/milestone1`、`step=30000`、`epoch=51`、`batch_cursor=165`、3 份 rank RNG；三模块 raw 与 EMA 键一致（backbone 607,113,088；condition_encoder 1,481,472；text_encoder 唯一 213,325,440 / state_dict 405,411,456 含 tied 重复）；optimizer 2 组 lr 1e-4/1e-5。可直接用于评测。
+
+## 正式 E1 评测（first24 test640，2026-10-24 09:12 起）
+- 先做 2 条 pilot 验证真实 checkpoint 全链路：`tools/eval_milestone.py --config runs/m1_E1_base/config.yaml --checkpoint runs/m1_E1_base/final.pt --pilot real-e1-pilot --max-videos 2 --out /tmp/m1_E1_pilot_20261024 --gpu cuda:0` → 30 s（含加载）、FVD 1558.57（N=2 无统计意义，仅证明入口可用）、协议/契约检查通过。
+- 全量评测已起（**只用 1 张 GPU**，符合 ≤3 卡约束）：`CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 tools/eval_milestone.py --config runs/m1_E1_base/config.yaml --checkpoint runs/m1_E1_base/final.pt --out reports/eval/m1_E1_base --gpu cuda:0 --load-workers 8`；进程 PID 3673448，日志 `/tmp/m1_E1_eval.log`；raw 权重、DDIM50/CFG2/GT 长度/seed42、共享 640 id 清单、官方 I3D-400 计分；实测约 3 s/条 → 预计 ~30–35 min 出 `reports/eval/m1_E1_base/fvd.json`。
+- **结果（2026-10-24 09:43，raw 权重，N=640）**：**FVD = 126.92693857176755**；真值半分本底 `real_split_half_fvd` = **84.29751411436246**（与 prepare 阶段逐位一致，确认真值特征缓存复用正确）；`mean_feature_l2 = 32.3205 ± 6.5283`；`skipped_short = []`（共享清单已预筛 640/642）；协议 = first24 contiguous + frame0、官方 I3D-K400 400d / 224²、DDIM50 / CFG2 / GT 长度 / seed42、float64 Fréchet；全流程 09:12:34→09:43:12 约 **30.5 min**。模型 FVD 约为真值本底的 **1.51×**，是 from-scratch 30k 的基准数（有信号、但离真值分布仍有明显差距）；不可与旧口径（R(2+1)D 16 帧、SignViP 32 帧 272×224 等）数字混表。
+- 按规格 M1.5 判据还需**同协议可复现两次**：第二次评测已启动（`reports/eval/m1_E1_base_repeat`，同 config/ckpt/seed），两次结果与差值待落盘后追加。
+
+## 根盘 ENOSPC 与权重迁移到 /data1/huyang（2026-10-24 10:20–10:35）
+- **事件**：2026-10-24 09:50 第二次复现性评测在 43/640 处因根盘 `/` 被写满（PIL 保存 PNG 报 ENOSPC）中止。根盘为共享机（当时 7 个登录用户），可用空间从 13 GiB 被其他进程吃到 0，随后他人释放约 83 GiB；与本仓库训练/eval 的产物体积无关。第一次正式评测（FVD 126.9269）在写满前已完整落盘，产物未损坏。
+- **用户新指令（2026-10-24）**：后续所有权重放 `/data1/huyang`（`/dev/sda`，3.6T、余 882 GiB）。
+- **迁移**：`runs/m1_E1_base`（28 GiB）与 `runs/m1_E1_base_4gpu_aborted_20261022`（14 GiB）已复制到 `/data1/huyang/text2video/runs/`；逐文件 `find` 列表+大小比对完全一致（1747/64 个文件），`final.pt` 经软链重新 `torch.load` 校验 `step=30000` 通过。随后删除根盘原目录并在仓库 `runs/` 下保留同名**软链**，根盘可用空间 140 GiB。
+- **配置**：`configs/milestone1/{base,E1..E10}.yaml` 的 `training.out_dir` 全部改为 `/data1/huyang/text2video/runs/m1_*`；README 同步。登记 TODO **D66**。测试仍 **91 passed**。
+- **复现评测重启**：删除 09:50 的残缺输出目录，第二次评测重新启动（同 config/ckpt/seed、raw、1 GPU、输出 `reports/eval/m1_E1_base_repeat`），2026-10-24 11:06 完成。
+- **复现结果**：第二次 **FVD = 126.92693857176755**、`real_split_half_fvd = 84.29751411436246`、`mean_feature_l2 = 32.32046025294281`，与第一次**逐位相同**；两次 `ids.txt` SHA256 均为 `6f96ad9d…10f6`，`protocol.json` 的权重口径/采样/契约一致。**M1.5 判据通过**（非 NaN、不低于真值本底、可复现两次）。
+
+## E2（base-2b）实验启动（2026-10-24 11:54）
+- 用户指令：继续跑 **E2**。E2 = E1 唯一改动 factor2 `2a`→`2b`：28 层 cross-attn 全部注入 `[ref;text]`；其余配方与 E1 完全一致（1a、4c、3b、5b、batch12、lr1e-4/text lr1e-5、seed42、30k、raw、DDIM50/CFG2）。
+- 资源：GPU2/3 被其他人的作业占用（各 ~15 GiB、~50% util），本次使用**空闲的 GPU0/1（2 卡，符合 ≤3 卡约束）**：`CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 -m t2v.train --config configs/milestone1/E2.yaml`；micro1×accum6×world2 = **effective batch12**（与 E1 等价）；launcher PID 3692697、rank0 PID 3692722。
+- 输出：`/data1/huyang/text2video/runs/m1_E2/`（用户重申所有权重放 `/data1/huyang`；arm 配置 `training.out_dir` 已是绝对路径）。实测 step1 loss 0.90315、step10 0.86243、step20 0.70056、~4.1 s/步、峰值 16.64 GiB、参数 821.92M；预计 30k ≈ 34h（约 2026-10-25 22:00 前后）。
+- **自动评测链**：`/tmp/m1_E2_chain.sh`（nohup，PID 3692975）轮询 `status.json`，训练 `complete` 后自动挑一张空闲 GPU、按 first24/test640 协议评测并写 `reports/eval/m1_E2/`；失败会写 `/tmp/m1_E2_chain.log`。结果登记 `EXPERIMENT.md` **exp-100**（已预登记为进行中）。

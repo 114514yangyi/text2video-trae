@@ -1509,3 +1509,27 @@ SignViP `preprocess_single`（张量双线性、无抗锯齿）。`align_audit.p
 ## 2026-10-22 · 目标机 conda 环境验证
 
 已配置独立 `text2video` 环境。依赖一致性、四卡CUDA/bf16、真实缓存→本地mT5→DiT前向、冻结VAE校验及单帧解码通过；128 passed / 9 skipped（Wan权重未打包）。I3D常量输入自检133.908176。迁移949332文件仅.git/index摘要不同，其余匹配。未启动训练、未实测batch16反向峰值显存。证据和启动命令：`ENVIRONMENT_SETUP_20261022.md`；决策D63。
+
+## 2026-10-24 · 里程碑1 E1 base 训练完成：FVD 126.93（first24/N=640，本底 84.30，两次逐位一致）
+
+**结论**：里程碑1 的 base 臂 E1（PixArt-α 骨架 28×1152/16、1a cross-attn 分层 `[T,T,T,R]×7`、
+4c mT5 前3层+embedding 可训、2a、3b 无 motion、5b from scratch）训练 30k 步后，按
+first24 协议（contiguous 24 帧含 frame0、官方 I3D-K400 400d logits、224²、DDIM50/CFG2、
+GT 长度、seed42、raw 权重、test 单侧）测出 **FVD = 126.92693857176755**（N=640/642；
+真值半分本底 `real_split_half_fvd` = 84.29751411436246；mean_feature_l2 32.32±6.53）。
+同协议第二次评测**逐位相同**（FVD、ids SHA256 均一致），说明整条生成/计分链路确定可复现，
+M1.5 判据（非 NaN、不低于真值本底、可复现两次）通过。
+
+**读法**：这是 from-scratch、30k 步、有效 batch12、无预训练先验的基准数，约为真值本底的
+**1.51×**——有信号但离真值分布仍有明显差距，不能当作方法有效性证据；也不能与旧 16 帧
+R(2+1)D 口径（22–26）或 SignViP 32 帧/272×224 口径（156–260）数字混表。它是 M1 十臂矩阵
+**唯一分母**（E2–E10 均相对它单因子改动）。
+
+**产物/证据**：`/data1/huyang/text2video/runs/m1_E1_base/`（final.pt/last.pt 13.68 GiB，
+30 组视觉回调，metrics）；`reports/eval/m1_E1_base/{fvd,protocol}.json` 与
+`reports/eval/m1_E1_base_repeat/`；执行记录 `MILESTONE1_EXECUTION_20261022.md`；
+台账 `EXPERIMENT.md` exp-099。
+
+**限制**：只有 30k 终点一个评估点（无中间 ckpt 的 FVD 曲线，P3 清理后可低成本补）；
+只测了 raw 权重，EMA 口径未测（用户待裁决）；batch 因用户 GPU≤3 约束由 16 改为 12（D65），
+与十臂后续必须保持同一 batch。

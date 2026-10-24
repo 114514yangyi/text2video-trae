@@ -108,8 +108,14 @@
 5. **对比指标固定为官方 I3D-FVD（2026-10-21 用户指令，取代原回译硬约束）**：
    此后所有方法/超参/采样器/训练预算的对比与晋级，**唯一主指标 = 官方 FVD**：
    `FVD (I3D-K400 logits, 16 frames, 224², N=642)`。口径唯一来源是
-   `.trae/documents/FVD_SPEC_20261021.md`，实现 `tools/eval_fvd.py`，改代码后必须先跑
-   `--self-check`（官方 0-vs-255 口径应 ≈131）并检查 `real_split_half_fvd` 本底。
+   `.trae/documents/FVD_SPEC_20261021.md`。
+   **2026-10-24 用户指令（优先级最高）：所有 FVD 测试必须使用 SignViP 的官方脚本** ——
+   实现 = `third_party/signvip_fvd/fvd.py`（SignViP 仓库 `metrics/fvd/styleganv/fvd.py` 的
+   字节固定副本，SHA256 `c9a1ac…da37`；`tools/eval_fvd_signvip.py` 调用其
+   `get_fvd_feats`/`frechet_distance`；`tools/eval_milestone.py` 默认 `--fvd-tool signvip`）。
+   `tools/eval_fvd.py` 只保留用于复算历史数字与等价性诊断，**不得再作为正式对比脚本**。
+   新脚本以「字节 SHA256 锁定 + 与旧实现同输入特征逐位一致」作为校验（2026-10-24 实测
+   max|Δfeature|=0、20 条 FVD 差 1.4×10⁻⁶）；旧脚本的 `--self-check`（≈131）只用于历史复算。
    - **旧口径作废**：`FVD (R(2+1)D-18 avgpool, 512-d)` 的 22–26 与 N=32 的 51.6–58.4
      不得再引用、不得与新数字混表（换骨干=换特征空间，Fréchet 无换算关系）。
    - **回译（SignMbart）不再要求、不再作为对比/晋级指标**；个别语义分析若仍要看回译，
@@ -153,12 +159,14 @@
      的 train 列、`NOTES.md` 的相关结论）保留原文，不重算、不删除；它们与新的单侧结论并存，
      引用时注明口径即可。
 
-6.1 **FVD 口径唯一来源（2026-10-21 用户指令）**：`FVD_SPEC_20261021.md` 是 FVD 的
-   唯一规范；任何 FVD 数字必须由 `tools/eval_fvd.py`（官方 I3D-K400 logits）产生，
-   报告中带 `protocol` 块（backbone / feature layer / frames / 分辨率 / N）与
+6.1 **FVD 口径唯一来源（2026-10-21 用户指令；2026-10-24 脚本改判）**：`FVD_SPEC_20261021.md`
+   是 FVD 的唯一规范；**所有正式 FVD 数字必须由 SignViP 官方脚本产生**
+   （`third_party/signvip_fvd/fvd.py`，经 `tools/eval_fvd_signvip.py`；见方法硬约束第 5 条），
+   报告中带 `protocol` 块（实现脚本 SHA256 / backbone / feature layer / frames / 分辨率 / N）与
    `real_split_half_fvd` 本底。旧 R(2+1)D 口径数字（22–26、51.6–58.4）**已作废**，
    只保留在历史日志与 `EXPERIMENT.md` 第 5 节自动生成区作追溯，不得用于任何比较或结论。
-   改 FVD 代码后必须重跑 `--self-check`（≈131）并记录结果。
+   旧 `tools/eval_fvd.py` 的 `--self-check`（≈131）与 2026-10-24 前的数字只用于历史复算；
+   脚本/实现任何改动都必须重新锁定并记录 SHA256，且用同输入特征等价性验证后才可用于新结果。
 
 7. **决策入 TODO**：所有"定下来"的结论（选定超参 / 采样器 / 预算点、被证伪而关闭的路线、
    新增规范本身）必须登记到 `.trae/todo/TODO.md`，使"还有什么要做 / 已经定了什么"可以直接
@@ -278,7 +286,8 @@
     提升；不把探索性重构直接堆在 `main` 上。分支的结论按四态规范落盘后合并或保留（见第 20 条）。
 19. **目标指标：最小化官方 I3D-FVD（2026-10-21 用户指令，取代"回译 BLEU-4 ≥ 10"）**：
     项目的**北极星指标**是 **FVD (I3D-K400 logits, 16 frames, 224²)**（口径 = 方法硬约束
-    第 5 条 + 评测规范第 6/6.1 条 + `FVD_SPEC_20261021.md`，**test 642 单侧**）。
+    第 5 条 + 评测规范第 6/6.1 条 + `FVD_SPEC_20261021.md`，**test 642 单侧**；脚本 = SignViP
+    官方脚本，2026-10-24 用户指令）。
     **方向 = 越低越好**；所有选点/晋级/方法对比都以 FVD 为主要努力方向与最终验收口径。
     参照：手语/PHOENIX14T 文献官方 FVD 在**几百**量级（SignViP=1025.45，SignGAN=1431.38，
     SignGen=1715.32；FlashSign 453–597），旧 R(2+1)D 口径的 22–26 **不是**可比的 FVD。
