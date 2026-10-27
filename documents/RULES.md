@@ -2,7 +2,7 @@
 
 ## 2026-10-27 FVD 执行实现强制规则（用户最新指令，覆盖此前全部 FVD 规则）
 
-所有正式 FVD 评测**只使用 `video_metric` 的 `calculate_fvd` 原样计算**（`method='styleganv'`、`only_final=True`）：实现逐字节固定在 `third_party/video_metric/`（上游 `JunyaoHu/common_metrics_on_video_quality` 的副本，SHA256 表见 `FVD_SPEC.md` §3），数据 IO 壳为 `tools/eval_video_metric_fvd.py`，`tools/eval_milestone.py` 生成后固定调用该入口。**仓库内不再保留任何旧的 FVD 计算脚本/实现/封装**：`tools/eval_fvd.py`、`tools/eval_signvip_fvd.py`、`third_party/signvip/`、`tools/redecode_fvd_frames.py`、`tools/fetch_i3d_weights.py` 及对应旧测试已于 2026-10-27 删除，不得恢复或另写实现。禁止在仓库内重写 FVD 的预处理/特征统计/距离（不得出现 `frechet_distance`/`compute_stats`/`preprocess_single`/`get_fvd_feats` 的本地实现）。
+所有正式 FVD 评测**只使用 `video_metric` 的 `calculate_fvd` 原样计算**（`method='styleganv'`、`only_final=True`）：实现直接使用用户提供的 `/home/wxy/video_metric`（上游 `JunyaoHu/common_metrics_on_video_quality` 的用户副本，`VIDEO_METRIC_ROOT` 可覆盖，仓库内不存副本；SHA256 表见 `FVD_SPEC.md` §3），数据 IO 壳为 `tools/eval_video_metric_fvd.py`，`tools/eval_milestone.py` 生成后固定调用该入口。**仓库内不再保留任何旧的 FVD 计算脚本/实现/封装**：`tools/eval_fvd.py`、`tools/eval_signvip_fvd.py`、`third_party/signvip/`、`tools/redecode_fvd_frames.py`、`tools/fetch_i3d_weights.py` 及对应旧测试已于 2026-10-27 删除，不得恢复或另写实现。禁止在仓库内重写 FVD 的预处理/特征统计/距离（不得出现 `frechet_distance`/`compute_stats`/`preprocess_single`/`get_fvd_feats` 的本地实现）。
 
 里程碑当前协议不变：test 单侧、固定清单（当前 640 条）、源 frame0..23 连续 24 帧、不补帧、GT 与生成均足 24 帧；统一源几何 256×256（PIL bilinear），再由上游 `preprocess_single` 做短边 224/中心裁剪/[-1,1]；特征为 I3D-K400 400-d logits；真值本底 `real_split_half_fvd`。跨模型比较必须共用同一真值、同一 ID 清单、同一取帧、同一尺寸、同一代码，不得混 N。
 
@@ -126,7 +126,7 @@
    `.trae/documents/FVD_SPEC.md`。
    - **实现（2026-10-27 用户指令，优先级最高）**：只允许 `video_metric` 包的
      `calculate_fvd(videos1, videos2, device, method='styleganv', only_final=True)` 原样计算；
-     实现逐字节固定在 `third_party/video_metric/`（SHA256 表见 `FVD_SPEC.md` §3），
+     实现直接使用 `/home/wxy/video_metric`（`VIDEO_METRIC_ROOT` 可覆盖；SHA256 表见 `FVD_SPEC.md` §3），
      IO 壳为 `tools/eval_video_metric_fvd.py`，`tools/eval_milestone.py` 固定调用它。
      旧脚本/旧实现（`tools/eval_signvip_fvd.py`、`tools/eval_fvd.py`、`third_party/signvip/`、
      `tools/redecode_fvd_frames.py`、`tools/fetch_i3d_weights.py`）已于 2026-10-27 删除。
@@ -176,7 +176,7 @@
 
 6.1 **FVD 口径唯一来源（2026-10-21 用户指令；2026-10-27 实现切换）**：`FVD_SPEC.md`
    是 FVD 的唯一规范；**所有正式 FVD 数字必须由 `video_metric.calculate_fvd` 原样计算产生**
-   （`third_party/video_metric/`，经 `tools/eval_video_metric_fvd.py`；见方法硬约束第 5 条），
+   （`/home/wxy/video_metric`，经 `tools/eval_video_metric_fvd.py`；见方法硬约束第 5 条），
    报告中带 `protocol` 块（实现/权重 SHA256、backbone、feature layer、frames、分辨率、N）与
    `real_split_half_fvd` 本底。旧 R(2+1)D 口径（22–26、51.6–58.4）与 16 帧均匀抽取数字**已作废**，
    只保留在历史日志与 `EXPERIMENT.md` 第 5 节自动生成区作追溯，不得用于任何比较或结论。

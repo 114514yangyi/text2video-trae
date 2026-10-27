@@ -17,8 +17,12 @@
 
 ## 1. 实现（唯一允许的 FVD 计算）
 
-- **上游**：`JunyaoHu/common_metrics_on_video_quality`（下称 `video_metric`）。
-  逐字节副本固定在 `third_party/video_metric/`，SHA256 见 §3。
+- **来源（2026-10-27 用户指定，最终版）**：直接使用用户提供的
+  **`/home/wxy/video_metric`**（下称 `video_metric`，上游
+  `JunyaoHu/common_metrics_on_video_quality` 的用户副本）。仓库内**不再保存副本**；
+  可用环境变量 `VIDEO_METRIC_ROOT` 覆盖该路径（测试/迁移用）。SHA256 见 §3。
+  用户副本相对上游多一个 `pad()`（片段 <10 帧时用最后一帧补到 11 帧）；first24 协议
+  恒为 24 帧，`pad()` 是 no-op，不改变任何分数，但按“原样使用用户包”原则保留。
 - **调用**：`calculate_fvd(videos1, videos2, device, method='styleganv', only_final=True)`，
   FVD 值 = `result['value'][0]`。内部全链路 =
   `fvd/styleganv/fvd.py` 的 `get_fvd_feats`（含 `preprocess_single`）与 `frechet_distance`。
@@ -32,12 +36,12 @@
   `calculate_fvd.py` 与 `fvd/**` 仍是逐字节原样。
 - **方法固定 `styleganv`**：`videogpt` 与 TensorFlow 版不进入正式口径。`fvd/videogpt/*.py`
   只是因为上游 `fvd/__init__.py` 会 import 它才随包存在，其权重不落盘、不参与评测。
-- **I3D 权重**：`third_party/video_metric/fvd/styleganv/i3d_torchscript.pt`，
+- **I3D 权重**：`/home/wxy/video_metric/fvd/styleganv/i3d_torchscript.pt`，
   SHA256 `bec6519f66ea534e953026b4ae2c65553c17bf105611c746d904657e5860a5e2`；
-  与 `models/i3d/i3d_torchscript.pt` 是同一个文件（本地资产，`*.pt` 被 git 忽略）。
-- **来源说明**：用户指定的 `/home/huyang/data/trae_projects/video_metric` 在评测机上不可用，
-  本轮从本机同源副本 `/home/hulala/gsw/SLP2025/VideoVAET/video_metric` 逐字节拷贝。
-  若之后拿到用户路径下的副本，先用 §3 的 SHA 表复核等价，再决定是否替换。
+  `models/i3d/i3d_torchscript.pt` 是同字节的本地备份，正式入口不再读它。
+- **来源沿革**：2026-10-27 早先因用户给的路径不可用，曾拷贝到 `third_party/video_metric/`；
+  同日晚用户给出 `/home/wxy/video_metric` 后，代码改为**直接读该目录**并删除仓库内副本。
+  若该目录内容变化，入口会 SHA256 拒绝运行，必须按 §3 重新锁定并更新本文件。
 
 ## 2. 数据层协议（2026-10-27 保持不变）
 
@@ -63,10 +67,10 @@
 
 每次运行前逐文件 SHA256 校验，不匹配即拒绝运行；报告里记录整张表。
 
-| 文件（相对 `third_party/video_metric/`） | SHA256 |
+| 文件（相对 `/home/wxy/video_metric/`） | SHA256 |
 |---|---|
 | `__init__.py` | `58997fdc7845bd897b81956e040f851fd0ac8283362ab54dbdd51e6d6a6ec4f0` |
-| `calculate_fvd.py` | `ad36575e9377c0c97f2dbb37a4b4454a2df53e850c3fd32e13756ad53d77c751` |
+| `calculate_fvd.py` | `443bc336b256e79bd90bef2bf6e60f70ab2db59fa8ef5a8604fe4c1ff249b093`（用户版，含 `pad()`） |
 | `fvd/__init__.py` | `ba54c88d1db05946bca93deed0e4ad4f22f593b3e31aabf4ca834666c2c3a314` |
 | `fvd/styleganv/__init__.py` | `274caa9c7d7bc753361dcceb7c799a94321d4d2f503b862943f172b19b1408a0` |
 | `fvd/styleganv/fvd.py` | `c9a1acbf811c3050d92b5289f4a4789ba6209a71a5bafbeba10df5576ffbda37` |
@@ -75,9 +79,10 @@
 | `fvd/videogpt/fvd.py` | `a1fb54c15461c84761988bb7307e7d1b13feafceb6beb9b64c1a07bacb81f651` |
 | `fvd/videogpt/pytorch_i3d.py` | `e4b241d82ae0432cd19410ce4fb08ab1003c09721aca8b907cdb8a21e15086f8` |
 
-- 不得手改 `third_party/video_metric/` 下任何原样文件。需要升级 = 用户指令 + 换副本 +
+- 不得手改 `/home/wxy/video_metric/` 下的 FVD 源文件。需要升级 = 用户指令 + 更新目录 +
   重算 SHA + 更新本表 + 记 TODO，并说明旧结果是否仍可比。
-- 来源、拷贝命令与“为什么不执行 `__init__.py`”写在 `third_party/video_metric/PROVENANCE.md`。
+- “为什么不执行 `__init__.py`”（它会经 `metric.py` 引入未安装的 `pytorch_msssim`）
+  与加载方式见 `tools/eval_video_metric_fvd.py` 模块 docstring；该文件不含任何指标数学。
 
 ## 4. 运行入口
 
@@ -132,7 +137,8 @@ python tools/eval_video_metric_fvd.py \
 
 - **旧计算脚本**：`tools/eval_fvd.py`、`tools/eval_signvip_fvd.py`、
   `tools/redecode_fvd_frames.py`、`tools/fetch_i3d_weights.py`
-- **旧实现副本**：`third_party/signvip/`（含 README）
+- **旧实现副本**：`third_party/signvip/`（含 README）；
+  以及 2026-10-27 短暂存在的 `third_party/video_metric/` 副本（后改为直接用 `/home/wxy/video_metric`）
 - **旧测试**：`tests/test_eval_fvd.py`、`tests/test_signvip_fvd.py`，
   以及 `tests/test_milestone_eval.py` 中两个只测旧脚本的 FVD 测试
 - **旧计算约束**（随 `FVD_SPEC_20261021.md` 一并删除）：SignViP 强制入口、SignViP 源码/
@@ -157,6 +163,9 @@ python tools/eval_video_metric_fvd.py \
 **129.7520 / 142.3279 / 130.8517**，对比旧入口的 129.7493 / 142.3202 / 130.8486，分别
 Δ **+0.0027 / +0.0077 / +0.0031**（≤0.006%，来源是 batch 8→上游硬编码 10 的 GPU 浮点噪声）；
 真值半分 84.8977 vs 旧 84.8970。三臂相对排序与全部结论不变。
+**同日改用用户提供的 `/home/wxy/video_metric` 重跑 E1/E2/E4**，结果为
+**129.7520 / 142.3279 / 130.8517**（与副本结果逐位相同；用户版多出的 `pad()` 在 24 帧下不生效），
+证明“直接使用该目录”与旧数据协议完全兼容。
 
 ## 8. 变更历史
 
@@ -164,3 +173,8 @@ python tools/eval_video_metric_fvd.py \
 - **2026-10-24**：改为 SignViP 原样实现（`FVD_SPEC_20261021.md` 的 2026-10-24 版）。
 - **2026-10-27**：改为 `video_metric` 原样计算；删除旧脚本、旧实现、旧约束与历史 FVD
   报告产物（本文件）。决策登记 TODO **D76**。
+- **2026-10-27（当日修订）**：用户给出最终路径 `/home/wxy/video_metric`；代码改为直接读
+  该目录（`VIDEO_METRIC_ROOT` 可覆盖），删除仓库内 `third_party/video_metric/` 副本；
+  SHA 表更新为用户版 `calculate_fvd.py`（`443bc3…b093`，含 `pad()`）；E1/E2/E4 复算数值
+  与副本完全一致。
+

@@ -1709,3 +1709,11 @@ E4 与 E1 在其它诊断量（如运动幅度/帧间差分）上的差异。
 与 GPU 浮点归约噪声的量级内；同一批帧、同一 400-d 特征空间、同一协议，三臂的相对排序与
 结论（E1 最好、E2 差约 9.7%、E4 与 E1 基本持平）全部不变。产物
 `reports/eval/m1_E{1,2,4}_video_metric_20261027/fvd.json`；台账 exp-113/114/115。
+
+
+**改用用户最终路径重跑（2026-10-27 晚）**：用户给出 `/home/wxy/video_metric` 后，入口改为直接读该目录、
+删除仓库内 `third_party/video_metric/` 副本（`VIDEO_METRIC_ROOT` 可覆盖），并重新锁定 SHA；
+三臂重跑 = **E1 129.7520 / E2 142.3279 / E4 130.8517**（floor 84.8977），与副本结果**逐位相同**。
+唯一差异是用户版 `calculate_fvd.py` 新增 `pad()`（<10 帧时用最后一帧补到 11 帧），
+first24 恒为 24 帧，`pad()` 为 no-op。产物
+`reports/eval/m1_E{1,2,4}_video_metric_user_src_20261027/fvd.json`；台账 exp-116。

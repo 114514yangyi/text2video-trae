@@ -11,8 +11,8 @@
 - `t2v/milestone_runtime.py`：配置继承、本地路径重定位、CPU状态快照、原子存档、RNG状态。
 - `t2v/pipelines/milestone.py`：GT长度采样、首帧一次、固定前24帧解码、训练可视化，完整raw/EMA一致载入。
 - `tools/eval_milestone.py`：固定清单、显式pilot、生成后固定调用正式 FVD 入口 `tools/eval_video_metric_fvd.py` 计分。
-- `tools/eval_video_metric_fvd.py`：FVD 的 IO 壳（test 清单/帧协议 + 真值半分本底 + protocol/SHA256）；所有指标数学调用 `third_party/video_metric` 的 `calculate_fvd`，壳内不含任何本地实现。
-- `third_party/video_metric/`：上游 `JunyaoHu/common_metrics_on_video_quality` 的逐字节副本（`calculate_fvd.py` + `fvd/styleganv` + `fvd/videogpt` 的 py；I3D 权重为本地 git-ignore 资产），见其 `PROVENANCE.md`。
+- `tools/eval_video_metric_fvd.py`：FVD 的 IO 壳（test 清单/帧协议 + 真值半分本底 + protocol/SHA256）；所有指标数学调用用户提供的 `/home/wxy/video_metric` 里的 `calculate_fvd`（`VIDEO_METRIC_ROOT` 可覆盖），壳内不含任何本地实现。
+- `/home/wxy/video_metric`（仓库外，用户提供）：上游 `JunyaoHu/common_metrics_on_video_quality` 的用户副本（`calculate_fvd.py` + `fvd/styleganv` + `fvd/videogpt` 的 py + I3D 权重）；入口每次校验 SHA256，见 `FVD_SPEC.md` §3。
 - `tools/make_milestone_compare_video.py`：固定 test 视频的 GT-vs-生成对比视频，两种长度：`--mode first24`（评测计分的前 24 帧）与 `--mode full`（GT 长度完整片，用 `latents.pt` 的完整 latent 轨迹经冻结 VAE 在 CPU 重建，不载模型权重）；每臂一个 side-by-side + 全臂 2×2 网格 + contact sheet + manifest；只读 `reports/eval/*/frames` 与 `fvd.json`，不占 GPU。
 - `configs/milestone1/{base,E1..E10}.yaml`：全部十臂仅用配置切换；本轮只启动 E1。
 - 新测试：test_pixart/test_milestone_text/test_milestone_training/test_milestone_eval/test_video_metric_fvd。
@@ -305,4 +305,4 @@ idea 从 FINISH 出池时回填终值与去向；第 5 节指标区由 `tools/co
 
 - `tools/signvip/reproduce.py`：2026-10-22 SignViP发布权重论文条件重跑（原始test、50步完整生成、官方视频/FVD、固定清单及校验）；测试 `tests/test_signvip_reproduce.py`。
 
-- 2026-10-24 D67：正式FVD入口 `tools/eval_signvip_fvd.py`（只做数据IO/固定first24人口/调用）；原样第三方源码 `third_party/signvip/fvd.py` 校验SHA，预处理/特征/距离不再本地实现。`eval_milestone.py`和旧`eval_fvd.py` CLI统一转入此入口。（**历史记录**：2026-10-27 已按用户指令删除该入口与 `third_party/signvip/`，改由 `tools/eval_video_metric_fvd.py` + `third_party/video_metric/` 承担，见 `FVD_SPEC.md`。）
+- 2026-10-24 D67：正式FVD入口 `tools/eval_signvip_fvd.py`（只做数据IO/固定first24人口/调用）；原样第三方源码 `third_party/signvip/fvd.py` 校验SHA，预处理/特征/距离不再本地实现。`eval_milestone.py`和旧`eval_fvd.py` CLI统一转入此入口。（**历史记录**：2026-10-27 已按用户指令删除该入口与 `third_party/signvip/`，改由 `tools/eval_video_metric_fvd.py` + `/home/wxy/video_metric` 承担，见 `FVD_SPEC.md`。）
