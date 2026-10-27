@@ -10,6 +10,15 @@
 > **建立**：2026-10-15 用户指令。规则正文见 `RULES.md` 知识库流转规范第 13 条，决策登记
 > 见 `TODO.md` **D25**。
 
+> **2026-10-27 FVD 实现切换注记（用户指令）**：自 2026-10-27 起，FVD 只由
+> `video_metric.calculate_fvd` 原样计算产生（入口 `tools/eval_video_metric_fvd.py`，
+> 规范 `FVD_SPEC.md`）。旧 SignViP 入口/旧脚本/旧约束，以及**历史 FVD 报告产物**
+> （`reports/eval/**/fvd*.json`、`fvd*.npz`、`fvd_command.json`、`real_floor.json`、
+> `fvd_ref/`）已按用户指令删除，因此本文件 2026-10-27 之前各行的「产物/报告」列可能
+> 指向已删除文件。那些历史 FVD 数字（129.7493、142.3202、130.8486 等）**保留为历史记录**
+> （台账行只增不删），但不再有证据文件可复算；因新旧实现的 FVD 核逐字节相同、协议不变，
+> 数值等价的结论不变。新实验结果一律用新入口重算并写新的 `fvd.json`。
+
 ## 1. 这个文档解决什么问题
 
 项目里已经有四类文档，但"某个方法当时测出多少"散落在 `NOTES.md` 的长段落、`FAIL.md` 的
@@ -53,10 +62,10 @@
 
 **口径铁律（沿用 `RULES.md` 第 5、6 条）**：
 
-- 当前规范（2026-10-21 修订，用户指令）：此后所有实验的**唯一主对比指标 = 官方 FVD**
-  （`FVD (I3D-K400 logits, 16 frames, 224²)`，口径见 `FVD_SPEC_20261021.md`）；任何对比
-  **只在 test 642 上**报告，同采样器 / CFG / 长度口径 / FVD 口径 / 种子。**回译不再要求、
-  不再作为对比/晋级指标**。**train 采样不是必需口径**；旧 train 侧数字只作过拟合诊断。
+- 当前规范（2026-10-21 建立，2026-10-27 实现切换）：此后所有实验的**唯一主对比指标 = 官方 FVD**
+  （`FVD (I3D-K400 logits, first24 连续 24 帧, 224²)`，口径与实现见 `FVD_SPEC.md`）；任何对比
+  **只在 test（固定 640 有效清单）上**报告，同采样器 / CFG / 长度口径 / FVD 口径 / 种子。
+  **回译不再要求、不再作为对比/晋级指标**。**train 采样不是必需口径**；旧 train 侧数字只作过拟合诊断。
 - **旧 FVD 口径作废**：`FVD (R(2+1)D-18 avgpool, 512-d)` 的 22–26 与 N=32 的 51.6–58.4
   不是官方 FVD，不得再与新数字并列或用于任何结论。
 - **MRR 不能跨 N 比**：随机水平约 `(ln N + 0.577)/N`，N=642 时地板 = 0.0110。表里的 MRR 一律
@@ -206,12 +215,12 @@
 
 | exp-097 | SignViP 复现·官方真值窗口含帧 0（审计 C4） | 用户 m02864 审计 / m02877 | 同 exp-095 的生成集（text→pose→video），真值改取官方 `start_idx=0` 窗口帧 0..T-1（`--include-frame0`） | 对照 exp-095（帧 1..T） | 635 单侧·contiguous 32 帧·272×224·signvip_tensor·I3D-K400 400d | **FVD 259.92**（本底 85.14，mean_l2 35.66）；较帧 1 口径 +0.35%，非量级因素 | `NOTES.md` 审计回合条目；`reports/eval/matrix/signvip_repro/test_n642/fvd_i3d400_f0.json` | 2026-10-22 |
 | exp-098 | SignViP GT-pose 近似·官方真值窗口含帧 0（审计 C4） | 用户 m02864 审计 / m02877 | 同 exp-096 的生成集，真值改取帧 0..T-1 | 对照 exp-096（帧 1..T） | 642 单侧·contiguous 32 帧·272×224·signvip_tensor·I3D-K400 400d | **FVD 156.27**（本底 84.25，mean_l2 25.61）；较帧 1 口径 −1.63%，非量级因素 | `NOTES.md` 审计回合条目；`reports/eval/matrix/signvip_gtpose/test_n642/fvd_i3d400_f0.json` | 2026-10-22 |
-| exp-108 | 里程碑1 E2 base-2b：28 层 cross-attn 全部注入 `[ref;text]`（相对 E1 只改因子 2） | TODO **D69** / 规格 §5 | E1 唯一改动 = factor2 `2a`→`2b`：所有 cross-attn 层的 K/V 都是 `[ref tokens ; text tokens]` 拼接；其余与 E1 完全相同（1a、4c、3b、5b、batch12、lr1e-4 / text lr1e-5、seed42、30k、DDIM50/CFG2）。参数量与 E1 相同（821.92M） | **vs E1**（同配方、同预算、唯一变量 = ref/text 可见性） | first24 test 单侧·N=640/642·DDIM50·CFG2.0·GT 长度·seed42·raw·官方 I3D-K400 400d 224²；真值半分本底 84.2975 | 训练中（2026-10-24 11:54 起，2×RTX3090、micro1×accum6×world2=batch12；step20 loss 0.7006、~4.1s/步）；FVD 待训完自动评测 | **进行中**；权重 `/data1/huyang/text2video/runs/m1_E2/`；评测将写 `reports/eval/m1_E2/` | `MILESTONE1_EXECUTION_20261022.md`；自动评测链 `/tmp/m1_E2_chain.sh` | 2026-10-24 登记 |
+| exp-108 | 里程碑1 E2 base-2b：28 层 cross-attn 全部注入 `[ref;text]`（相对 E1 只改因子 2） | TODO **D69** / 规格 §5 | E1 唯一改动 = factor2 `2a`→`2b`：所有 cross-attn 层的 K/V 都是 `[ref tokens ; text tokens]` 拼接；其余与 E1 完全相同（1a、4c、3b、5b、batch12、lr1e-4 / text lr1e-5、seed42、30k、DDIM50/CFG2）。参数量与 E1 相同（821.92M） | **vs E1**（同配方、同预算、唯一变量 = ref/text 可见性） | first24 test 单侧·N=640/642·DDIM50·CFG2.0·GT 长度·seed42·raw·官方 I3D-K400 400d 224²；canonical 入口 batch8/GPU，真值半分 84.8970（与 E1 完全一致） | **FVD = 142.3202**（N=640，raw，floor 84.8970，`skipped_short=[]`）；vs E1 129.7493：**Δ +12.5709（+9.69%，更差）**；训练 30k 步 35h21m（2×RTX3090、world2×accum6=batch12，loss 0.0171 末段） | **2b 劣于 2a（单 seed）**：把 ref+text 拼接喂给全部 28 层 cross-attn，比 E1 的分层注入差约 9.7%；注意 E1 用 3 卡、E2 用 2 卡（同 effective batch12、同为 3090），以及 rank 划分/RNG 差异；结论待 M1.6 其它条件臂对照复核 | `NOTES.md` 2026-10-25；权重 `/data1/huyang/text2video/runs/m1_E2/`；报告 `reports/eval/m1_E2/{fvd.json,fvd.npz,protocol.json}` | `MILESTONE1_EXECUTION_20261022.md`；自动评测链 `/tmp/m1_E2_chain.sh` | 2026-10-24 登记 / 2026-10-25 完成 |
 
 > **怎么读这张表**：`来源`列给"为什么做"，`做法`列给"改了什么"，`协议`列给"能不能比"，
 > `结论`列给"值不值得继续"，`去向`列给"完整结论在哪"。完整的八列指标在第 5 节。
 
-| exp-099 | 里程碑1 E1 base：PixArt-α 新骨架 × 十臂条件注入矩阵的基准臂（from scratch 30k） | TODO **D64/D65** / 规格 `MILESTONE1_ARCH_PIXART_20261022.md` | base = 1a+4c+2a+3b+5b：1024 维/帧 per-frame token、28 层/1152 宽/16 head、c 只含 timestep、cross-attn 分层注入 `[T,T,T,R]×7`（ref 层 3/7/11/15/19/23/27）、mT5 前 3 层+embedding 可训、ref frame0 条件、x0、无 motion、不用预训练权重；**3 卡 DDP，microbatch1×accum4=effective batch12**（2026-10-22 用户 GPU≤3 约束，D65；原 4 卡 batch16 作废），lr1e-4 / text lr1e-5，bf16，EMA0.9999 | 里程碑1 的基准/分母（无对照臂；E2–E10 均为相对它的单因子改动，E9 为 1c+3a 交互） | first24 test 单侧·N=640/642（两条 <24 帧源跳过）·DDIM50·CFG2.0·GT 长度·seed42·raw 权重·官方 I3D-K400 400d 224²；真值半分本底 84.2975 | **FVD = 126.9269**（N=640，raw 权重，真值本底 84.2975，mean_feature_l2 32.32±6.53）；协议 first24 contiguous+frame0 / I3D-K400 400d / 224² / DDIM50 / CFG2 / GT 长度 / seed42；训练 30k 步 32h01m，末段 loss 0.0176；**同协议第二次评测逐位相同（126.92693857176755）** | **历史口径基准成立，需远程正式脚本重测后才可用于新对比**：M1.5 判据通过（非 NaN、不低于本底、可复现两次）；作为十臂矩阵的分母，效果对比待 M1.6 | `NOTES.md` 2026-10-24；`reports/eval/m1_E1_base{,_repeat}/fvd.json`、`protocol.json`；M1.6 待用户授权 | 2026-10-24 登记/裁决
+| exp-099 | 里程碑1 E1 base：PixArt-α 新骨架 × 十臂条件注入矩阵的基准臂（from scratch 30k） | TODO **D64/D65** / 规格 `MILESTONE1_ARCH_PIXART_20261022.md` | base = 1a+4c+2a+3b+5b：1024 维/帧 per-frame token、28 层/1152 宽/16 head、c 只含 timestep、cross-attn 分层注入 `[T,T,T,R]×7`（ref 层 3/7/11/15/19/23/27）、mT5 前 3 层+embedding 可训、ref frame0 条件、x0、无 motion、不用预训练权重；**3 卡 DDP，microbatch1×accum4=effective batch12**（2026-10-22 用户 GPU≤3 约束，D65；原 4 卡 batch16 作废），lr1e-4 / text lr1e-5，bf16，EMA0.9999 | 里程碑1 的基准/分母（无对照臂；E2–E10 均为相对它的单因子改动，E9 为 1c+3a 交互） | first24 test 单侧·N=640/642（两条 <24 帧源跳过）·DDIM50·CFG2.0·GT 长度·seed42·raw 权重·官方 I3D-K400 400d 224²；真值半分本底 84.8970（canonical 入口/批量8/GPU） | **正式（SignViP 原样入口）FVD = 129.7493**（N=640，raw，真值半分 84.8970，first24 含 frame0、统一 256² 源几何 → 官方 224² 预处理、I3D-K400 400d、DDIM50/CFG2/GT 长度/seed42；脚本/权重 SHA256 见报告；同入口 batch4/CPU 重算为 129.7222，差 0.03% 属浮点/批量差异）；旧本地实现 126.9269 保留为历史值，不用于新对比。训练 30k 步 32h01m，末段 loss 0.0176；两次生成的 15360 帧 PNG 逐字节相同。 | **正式基准成立**：M1.5 判据通过（非 NaN、不低于本底、可复现）；作为 M1.6 十臂分母使用 **129.7493**（canonical 入口、batch8/GPU、与各臂评测链完全同协议） | `NOTES.md` 2026-10-24；`reports/eval/m1_E1_base_signvip_bs8/{fvd.json,fvd.npz}`（正式同协议）；`reports/eval/m1_E1_base_signvip/`（batch4/CPU 复算）；`reports/eval/m1_E1_base{,_repeat}/fvd.json`（历史口径）；M1.6 待用户授权 | 2026-10-24 登记/裁决
 | exp-100 | SignViP 50步完整生成·开头32帧，短片重复末帧 | D57（用户授权论文条件重跑） | 原始210×260官方test字幕/帧；发布权重text→pose→video，完整EOS长度，DDIM50/CFG3.5/context24/overlap2/fp16；官方视频编码与FVD函数 | 同批生成的预声明协议诊断，非论文完整协议已确认 | test N=642；开头32帧，短片重复末帧；先272×224后官方224中心裁剪；I3D-K400 400d logits | **FVD 290.291187**，real split-half 85.528845 | 论文1025.45未复现；原始特征独立PSD公式复核吻合；论文协议/最终权重版本待确认 | `reports/eval/signvip_paper_repro_20261022_v2/fvd_test642.json` / `NOTES.md` 2026-10-23 D57 | 2026-10-22完成，10-23登记 |
 | exp-101 | SignViP 50步完整生成·开头32帧，仅双方足32帧 | D57（用户授权论文条件重跑） | 原始210×260官方test字幕/帧；发布权重text→pose→video，完整EOS长度，DDIM50/CFG3.5/context24/overlap2/fp16；官方视频编码与FVD函数 | 同批生成的预声明协议诊断，非论文完整协议已确认 | test N=597；开头32帧，仅双方足32帧；先272×224后官方224中心裁剪；I3D-K400 400d logits | **FVD 308.710916**，real split-half 90.776601 | 论文1025.45未复现；原始特征独立PSD公式复核吻合；论文协议/最终权重版本待确认 | `reports/eval/signvip_paper_repro_20261022_v2/fvd_test642.json` / `NOTES.md` 2026-10-23 D57 | 2026-10-22完成，10-23登记 |
 | exp-102 | SignViP 50步完整生成·各自完整视频均匀16帧 | D57（用户授权论文条件重跑） | 原始210×260官方test字幕/帧；发布权重text→pose→video，完整EOS长度，DDIM50/CFG3.5/context24/overlap2/fp16；官方视频编码与FVD函数 | 同批生成的预声明协议诊断，非论文完整协议已确认 | test N=642；各自完整视频均匀16帧；先272×224后官方224中心裁剪；I3D-K400 400d logits | **FVD 73.669359**，real split-half 61.260062 | 论文1025.45未复现；原始特征独立PSD公式复核吻合；论文协议/最终权重版本待确认 | `reports/eval/signvip_paper_repro_20261022_v2/fvd_test642.json` / `NOTES.md` 2026-10-23 D57 | 2026-10-22完成，10-23登记 |
@@ -221,6 +230,10 @@
 | exp-105 | D67·E7全640 | D67用户强制SignViP原样FVD实现 | E7相同PNG重测；替代124.0733作为正式SignViP实现分数 | E7/SignViP共有真实视频、first24、几何、代码、I3D及ID；完整640单列 | test N=640；源frame0..23、不补帧、统一256方形（PIL bilinear），原样SignViP tensor no-AA→224中心裁剪；400d logits；距离原函数 | **FVD 126.84746316**；真值半分 84.88998481 | 本次正式协议结果；不得与旧124.0733或论文1025.45直接混比 | `reports/eval/m1_E7_signvip_first24_20261024/fvd.json`；源码`third_party/signvip/fvd.py`，提交a7756ed | 2026-10-24 |
 | exp-106 | D67·E7共同617 | D67用户强制SignViP原样FVD实现 | 同一批E7；只在与SignViP共同足24的617条上统计 | E7/SignViP共有真实视频、first24、几何、代码、I3D及ID；完整640单列 | test N=617；源frame0..23、不补帧、统一256方形（PIL bilinear），原样SignViP tensor no-AA→224中心裁剪；400d logits；距离原函数 | **FVD 128.47619769**；真值半分 89.08661494 | 本次正式协议结果；不得与旧124.0733或论文1025.45直接混比 | `reports/eval/m1_E7_signvip_first24_20261024/fvd.json`；源码`third_party/signvip/fvd.py`，提交a7756ed | 2026-10-24 |
 | exp-107 | D67·SignViP共同617 | D67用户强制SignViP原样FVD实现 | 复用公开权重DDIM50/CFG3.5完整生成MP4；非重新生成；生成配方与E7不同 | E7/SignViP共有真实视频、first24、几何、代码、I3D及ID；完整640单列 | test N=617；源frame0..23、不补帧、统一256方形（PIL bilinear），原样SignViP tensor no-AA→224中心裁剪；400d logits；距离原函数 | **FVD 218.50745041**；真值半分 89.08661494 | 本次正式协议结果；不得与旧124.0733或论文1025.45直接混比 | `reports/eval/m1_E7_signvip_first24_20261024/fvd.json`；源码`third_party/signvip/fvd.py`，提交a7756ed | 2026-10-24 |
+
+| exp-109 | E1 base：远程正式 SignViP FVD 重测 | 用户授权 / D72 | 复用30k raw E1既有640条PNG，生成参数与远程E1配置逐项核对一致；不训练、不重新生成；文本侧前3层+embedding可训，原训练text lr1e-5 | 同一生成集仅切换至远程正式FVD脚本；旧126.9269仅历史记录 | test N=640；first24含frame0；源256×256→官方no-AA中心裁剪224；I3D-K400 400d logits；DDIM50/CFG2/GT长度/seed42/raw；CPU计分 | **FVD 129.7222078577488**；真值半分本底 **84.87336765689959** | 本次远程脚本重测完成；作为E1新口径结果，跨设备比较须注明CPU/GPU | `reports/eval/m1_E1_base_signvip/fvd.{json,npz}`；核验 `reports/eval/m1_E1_remote_signvip_20261024/verification.json`；NOTES D72 | 2026-10-24 |
+| exp-110 | 里程碑1 E4 base-3a：加 motion loss（相对 E1 只改因子 3） | TODO **D73** / 规格 §5 | E1 唯一改动 factor3 `3b`→`3a`：`MultiScaleDeltaLoss`（scales 1/2/4、weight 0.1、warmup 2000）作用在 `pred_x0` 与 GT latent 的多尺度时间差分 MSE（逐视频裁 padding、k∈{1,2,4}）；其余同 E1（1a、4c、2a、5b、batch12、lr1e-4/text lr1e-5、seed42、30k、DDIM50/CFG2、raw） | **vs E1**（同配方、同预算、唯一变量 = motion loss；E9 是 1c+3a 交互臂，不能替代本臂） | first24 test 单侧·N=640·DDIM50·CFG2.0·GT 长度·seed42·raw·canonical SignViP 入口 batch8/GPU；真值半分 84.8970 | **FVD = 130.8486**（N=640，raw，floor 84.8970，`skipped_short=[]`）；vs E1 129.7493：**Δ +1.0994（+0.85%，基本持平/略差）**；训练 30k 步 29h36m（3×3090、world3×accum4=batch12，末段 mse 0.0201 + 0.1×motion 0.0195 = loss 0.0220） | **motion loss 在此配方下没有带来可测的 FVD 改善**（E4≈E1，单 seed，差 0.85% 在种子/训练噪声量级，不能断言有害）；E9（1c+3a）是交互臂，不能替代本臂结论 | `NOTES.md` 2026-10-27；权重 `/data1/huyang/text2video/runs/m1_E4/`；报告 `reports/eval/m1_E4/{fvd.json,fvd.npz,protocol.json}` | `MILESTONE1_EXECUTION_20261022.md`；自动评测链日志 `/tmp/m1_E4_chain.log` | 2026-10-25 登记 / 2026-10-27 完成 |
+| exp-111 | 里程碑1 E6 base-4b：完整 12 层 mT5 文本编码器可训练（相对 E1 只改因子 4） | TODO **D74** / 规格 §5 | E1 唯一改动 factor4 `4c`→`4b`：文本编码器保留完整 12 层 encoder（含 embedding）且全部可训，text lr 1e-5；其余同 E1（1a、2a、3b、5b、batch12、lr1e-4、seed42、30k、DDIM50/CFG2、raw）。参数 backbone 607,113,088 + cond 1,481,472 + text **277,040,256**（E1 4c 为 213,325,440） | **vs E1**（同配方、同预算、唯一变量 = 文本深度+可训练性；E5 4a 未跑，故深度 vs 可训练性尚不能完全分离） | first24 test 单侧·N=640·DDIM50·CFG2.0·GT 长度·seed42·raw·canonical SignViP 入口 batch8/GPU；真值半分 84.8970 | 训练中（2026-10-27 10:26 起，3×RTX3090、world3×accum4=batch12；step1 loss 0.90315、step20 0.70819、~4.1s/步、峰值 **17.93 GiB**）；FVD 待训完自动评测 | **进行中**；权重 `/data1/huyang/text2video/runs/m1_E6/`；评测将写 `reports/eval/m1_E6/` | `MILESTONE1_EXECUTION_20261022.md`；自动评测链 `/tmp/m1_E6_chain.sh` | 2026-10-27 登记 |
 
 ## 5. 指标明细（自动生成，勿手改）
 
@@ -419,3 +432,10 @@
 两条臂都是 from scratch 30k，等预算基线是矩阵行 `prefix30k`。等参数对照
 （`slot_mode: concat`，参数量同为 191,738,368）是判据的一部分：只有处理臂同时优于
 基线与对照臂，"槽身份稳定"才成立，否则收益只能归因于新增容量。
+
+
+## 教学靶场复现实验（不属于模型/FVD协议，2026-10-27）
+
+|编号|实验名称|来源|做法与对照|协议|实测|裁决与去向|备注|
+|---|---|---|---|---|---|---|---|
+|exp-112|案例4-2 DVWA XSS复现|D75 用户明确授权|官方DVWA2.3；low/medium/high/impossible；正常/大小写/双写/事件/编码/CSRF对照|本机独立靶场；Chromium140；反射型16例+存储型18例；存储型验证POST/GET/新会话|34/34符合预期；Cookie补充2/2；无外部请求；191上游文件一致|已验证；NOTES D75；报告20页及完整包|不占GPU、不涉及训练/测试集或FVD；最终证据reference/dvwa-case42-20261027/results/20261027_193731；前两轮调试未纳入统计|

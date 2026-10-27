@@ -10,14 +10,14 @@
 - `t2v/train.py`：单卡/torchrun DDP，分桶有效batch、梯度累积、文本独立LR、可选motion、完整三模块CPU EMA与精确续训。
 - `t2v/milestone_runtime.py`：配置继承、本地路径重定位、CPU状态快照、原子存档、RNG状态。
 - `t2v/pipelines/milestone.py`：GT长度采样、首帧一次、固定前24帧解码、训练可视化，完整raw/EMA一致载入。
-- `tools/eval_milestone.py`：固定清单、显式pilot、生成后固定调用远程正式入口 `tools/eval_signvip_fvd.py` 计分。
-- `tools/eval_signvip_fvd.py`：SignViP 官方 FVD 脚本的调用壳（帧协议 + 真值本底 + 缓存 + protocol/SHA256）。
-- `third_party/signvip/fvd.py`：SignViP 血统官方 FVD 实现（字节固定，见其 README）。
-- `tools/eval_fvd.py`：旧的仓库内 FVD 实现（I3D-K400 400d），CLI 固定转入远程正式入口，旧 helpers 仅供历史测试/诊断导入。
+- `tools/eval_milestone.py`：固定清单、显式pilot、生成后固定调用正式 FVD 入口 `tools/eval_video_metric_fvd.py` 计分。
+- `tools/eval_video_metric_fvd.py`：FVD 的 IO 壳（test 清单/帧协议 + 真值半分本底 + protocol/SHA256）；所有指标数学调用 `third_party/video_metric` 的 `calculate_fvd`，壳内不含任何本地实现。
+- `third_party/video_metric/`：上游 `JunyaoHu/common_metrics_on_video_quality` 的逐字节副本（`calculate_fvd.py` + `fvd/styleganv` + `fvd/videogpt` 的 py；I3D 权重为本地 git-ignore 资产），见其 `PROVENANCE.md`。
+- `tools/make_milestone_compare_video.py`：固定 test 视频的 GT-vs-生成对比视频，两种长度：`--mode first24`（评测计分的前 24 帧）与 `--mode full`（GT 长度完整片，用 `latents.pt` 的完整 latent 轨迹经冻结 VAE 在 CPU 重建，不载模型权重）；每臂一个 side-by-side + 全臂 2×2 网格 + contact sheet + manifest；只读 `reports/eval/*/frames` 与 `fvd.json`，不占 GPU。
 - `configs/milestone1/{base,E1..E10}.yaml`：全部十臂仅用配置切换；本轮只启动 E1。
-- 新测试：test_pixart/test_milestone_text/test_milestone_training/test_milestone_eval。
+- 新测试：test_pixart/test_milestone_text/test_milestone_training/test_milestone_eval/test_video_metric_fvd。
 
-实际24帧清单为 test640/642（两条不足24），`reports/eval/samples/m1_test_first24_ids.txt`；24帧从frame0开始的官方I3D-400本底84.297514，证据 `reports/eval/m1_first24_prepare_20261022/real_floor.json`。与旧16帧表不混。
+实际24帧清单为 test640/642（两条不足24），`reports/eval/samples/m1_test_first24_ids.txt`；24帧从frame0开始的官方I3D-400本底84.297514。旧 FVD 报告产物（含当时的 `real_floor.json`）已于 2026-10-27 按用户指令删除，本底需用 `tools/eval_video_metric_fvd.py --fill-ref-cache` 重算；与旧16帧表不混。
 
 
 > 权威文档：根目录 `README.md`（目标/命令/产物/差异表）。本文件随代码结构变动同步维护。
@@ -46,7 +46,7 @@
 > ├── pipelines/decode.py                     # 冻结 VAE 解码 + 帧/视频写出
 > ├── training_utils.py                       # 种子 / EMA / 原子 ckpt / BucketedBatchSampler
 > └── monitoring.py                           # metrics.jsonl / wandb
-> tools/  eval_fvd.py fetch_i3d_weights.py redecode_fvd_frames.py collect_experiment_table.py
+> tools/  eval_milestone.py eval_video_metric_fvd.py collect_experiment_table.py
 >         eval_vae_recon.py make_eval_sample.py prune_frames.py gpu_queue.py queue_status.py
 > configs/frozen/vae_h02.yaml                # 冻结 VAE 契约（→ ../RefSign）
 > tests/  run_all + 13 个只依赖上述模块的测试
@@ -305,4 +305,4 @@ idea 从 FINISH 出池时回填终值与去向；第 5 节指标区由 `tools/co
 
 - `tools/signvip/reproduce.py`：2026-10-22 SignViP发布权重论文条件重跑（原始test、50步完整生成、官方视频/FVD、固定清单及校验）；测试 `tests/test_signvip_reproduce.py`。
 
-- 2026-10-24 D67：正式FVD入口 `tools/eval_signvip_fvd.py`（只做数据IO/固定first24人口/调用）；原样第三方源码 `third_party/signvip/fvd.py` 校验SHA，预处理/特征/距离不再本地实现。`eval_milestone.py`和旧`eval_fvd.py` CLI统一转入此入口。
+- 2026-10-24 D67：正式FVD入口 `tools/eval_signvip_fvd.py`（只做数据IO/固定first24人口/调用）；原样第三方源码 `third_party/signvip/fvd.py` 校验SHA，预处理/特征/距离不再本地实现。`eval_milestone.py`和旧`eval_fvd.py` CLI统一转入此入口。（**历史记录**：2026-10-27 已按用户指令删除该入口与 `third_party/signvip/`，改由 `tools/eval_video_metric_fvd.py` + `third_party/video_metric/` 承担，见 `FVD_SPEC.md`。）

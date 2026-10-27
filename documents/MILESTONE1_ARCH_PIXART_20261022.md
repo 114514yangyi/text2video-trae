@@ -45,11 +45,11 @@ frame-0 往哪层、以什么形式注入）以及四个配套因子（motion lo
 
 - **只用官方 FVD**：I3D Inception-v1（Kinetics-400）的 **400 维 logits** 作为特征，
   short side 224 + center crop 224、像素区间 `[-1,1]`、float64 Fréchet 距离。
-  实现走 `tools/eval_fvd.py`（已从 `8454407` 移植到本分支），口径文档
-  `FVD_SPEC_20261021.md`。
+  实现 = `third_party/video_metric` 的 `calculate_fvd`（`method='styleganv'`，
+  2026-10-27 起），入口 `tools/eval_video_metric_fvd.py`，口径文档 `FVD_SPEC.md`。
 - **24 帧模式 = 从头抽取 24 帧（2026-10-22 用户裁决，第二轮修订）**：官方 I3D 模型与代码
   不变，取帧规则改为**每条视频从第一帧起取连续 24 帧**（frame 0 → frame 23），
-  对应 `tools/eval_fvd.py` 的 `--frame-mode contiguous --num-frames 24`。
+  对应新入口的 `--frame-mode contiguous --num-frames 24`。
   - 与历史 **16 帧均匀** 口径**不可混表**：帧数不同、取帧位置也不同，特征统计不可比。
   - **不要沿用 `--resize-hw 272 224`**（那是旧 SignViP 预处理）；缩放仍按官方
     224 口径（short side 224 + center crop 224），除非有明确理由并在文档写清。
@@ -405,6 +405,8 @@ M1.5 先用 1–2 个臂的短程训练跑通全链路（含 FVD 自检），确
 24帧有效N不再使用历史~613估计：当前冻结test642中640条num_frames>=24，两条短片跳过；清单 `reports/eval/samples/m1_test_first24_ids.txt`，SHA256=6f96ad9dda2721b877dea1f08dab7bbf17bb4c6bcb9d90becb665824a69110f6。官方I3D-400 logits/24连续帧/frame0起/224²/fulltest640 的真实split-half本底实测 **84.29751411436246**（原16帧本底不适用）。证据 `reports/eval/m1_first24_prepare_20261022/real_floor.json` 与 protocol.json。自检133.908176通过。该补记仅用实测值回填§2.1，不改变取帧规则。
 
 **E1 base 实测补记（2026-10-24）**：E1 按 30k 步（3 卡、有效 batch12、D65）训完后正式评测：
-first24/N=640、raw 权重、DDIM50/CFG2/GT 长度/seed42 下 **FVD = 126.92693857176755**
-（真值本底 84.29751411436246）；同协议第二次评测逐位相同，M1.5 判据通过。该数字是十臂矩阵的
-唯一分母，证据 `reports/eval/m1_E1_base{,_repeat}/` 与 `NOTES.md` 2026-10-24 条。
+first24/N=640、raw 权重、DDIM50/CFG2/GT 长度/seed42 下，**SignViP 原样入口（2026-10-24 起强制）
+FVD = 129.7222078577488**（真值半分本底 84.87336765689959）；旧本地实现同帧为
+126.92693857176755（历史值，不用于新对比）。两次生成的 15360 帧 PNG 逐字节相同、分数确定，
+M1.5 判据通过。该数字是十臂矩阵的唯一分母，证据 `reports/eval/m1_E1_base_signvip/` 与
+`NOTES.md` 2026-10-24 条。

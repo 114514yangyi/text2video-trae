@@ -1,12 +1,12 @@
 # RULES — 对 agent 的约束
 
-## 2026-10-24 FVD 执行实现强制规则（用户最新指令，覆盖旧实现入口）
+## 2026-10-27 FVD 执行实现强制规则（用户最新指令，覆盖此前全部 FVD 规则）
 
-所有正式 FVD 评测必须直接调用 SignViP 原样代码中的 `get_fvd_feats`（包含 `preprocess_single`）与 `frechet_distance`，禁止使用本地重新实现的预处理、特征统计和距离函数作为正式指标路径。原样源码固定在 `third_party/signvip/fvd.py`，SHA256 `c9a1acbf811c3050d92b5289f4a4789ba6209a71a5bafbeba10df5576ffbda37`；每次运行校验源码及I3D权重SHA，并在报告记录。数据读取/固定清单封装入口为 `tools/eval_signvip_fvd.py`；`eval_milestone.py` 只能调用此入口，旧 `eval_fvd.py` 的CLI也转入此入口。历史helper仅供旧测试/诊断导入，不是正式评测入口。
+所有正式 FVD 评测**只使用 `video_metric` 的 `calculate_fvd` 原样计算**（`method='styleganv'`、`only_final=True`）：实现逐字节固定在 `third_party/video_metric/`（上游 `JunyaoHu/common_metrics_on_video_quality` 的副本，SHA256 表见 `FVD_SPEC.md` §3），数据 IO 壳为 `tools/eval_video_metric_fvd.py`，`tools/eval_milestone.py` 生成后固定调用该入口。**仓库内不再保留任何旧的 FVD 计算脚本/实现/封装**：`tools/eval_fvd.py`、`tools/eval_signvip_fvd.py`、`third_party/signvip/`、`tools/redecode_fvd_frames.py`、`tools/fetch_i3d_weights.py` 及对应旧测试已于 2026-10-27 删除，不得恢复或另写实现。禁止在仓库内重写 FVD 的预处理/特征统计/距离（不得出现 `frechet_distance`/`compute_stats`/`preprocess_single`/`get_fvd_feats` 的本地实现）。
 
-里程碑当前协议：test、从源帧0起连续24帧、不补帧、GT与生成均足24；固定测试清单E7为640条。统一源几何256×256（PIL bilinear；E7与现有GT本已256方形，无额外重采样），再由SignViP原函数做短边224/中心裁剪/[-1,1]。跨SignViP对照必须共用同一真值、ID、源几何和代码；已发布完整生成视频中23条短于24，和E7共同617条，应同时报告E7全640和双方共同617，不将两种N混比。生成模型本身的CFG、长度来源与视频编码仍须分别声明。
+里程碑当前协议不变：test 单侧、固定清单（当前 640 条）、源 frame0..23 连续 24 帧、不补帧、GT 与生成均足 24 帧；统一源几何 256×256（PIL bilinear），再由上游 `preprocess_single` 做短边 224/中心裁剪/[-1,1]；特征为 I3D-K400 400-d logits；真值本底 `real_split_half_fvd`。跨模型比较必须共用同一真值、同一 ID 清单、同一取帧、同一尺寸、同一代码，不得混 N。
 
-旧报告保留，旧FVD分数仅以其历史协议引用。规则修改前备份 `/tmp/text2video-fvd-policy-backup-20261024`；需要回滚可从该备份恢复原规则文件，代码改动由本轮分支提交追溯。
+口径唯一来源 = `.trae/documents/FVD_SPEC.md`；旧 `FVD_SPEC_20261021.md` 及其全部条款（SignViP 强制入口、SHA 锁定、`--self-check≈131`、617/640 双 N 等）已删除。历史 FVD 报告产物（`reports/eval` 下的 `fvd*.json/npz/lock`、`fvd_command.json`、`real_floor.json`、`fvd_ref/`）已按用户指令删除；`NOTES.md` / `EXPERIMENT.md` 中的历史数字仅作历史引用，不再有证据文件可复算。由于新旧实现的 FVD 核逐字节相同、协议不变，历史数字的**数值**等价于同输入新链路的结果。决策登记 TODO **D76**。
 
 ## 2026-10-24 双仓库发布说明（用户授权）
 
@@ -120,23 +120,23 @@
    仍**不得**引入 pose、gloss、光流等其它监督/条件信号（VAE 解码锚点属冻结 VAE 固有解码输入）。
    原"纯 text→video"设定降级为**可选消融口径**，其历史数字不得与本口径混表。
    约束 1/2/3（冻结 VAE、latent 扩散、x-prediction）与 5/6 不变。决策登记 TODO **D45**。
-5. **对比指标固定为官方 I3D-FVD（2026-10-21 用户指令，取代原回译硬约束）**：
+5. **对比指标固定为官方 I3D-FVD（2026-10-21 用户指令；2026-10-27 实现改为 video_metric 原样计算）**：
    此后所有方法/超参/采样器/训练预算的对比与晋级，**唯一主指标 = 官方 FVD**：
-   `FVD (I3D-K400 logits, 16 frames, 224², N=642)`。口径唯一来源是
-   `.trae/documents/FVD_SPEC_20261021.md`。
-   **2026-10-24 用户指令（优先级最高）：所有 FVD 测试必须使用 SignViP 的官方脚本** ——
-   实现 = `third_party/signvip/fvd.py`（SignViP 仓库 `metrics/fvd/styleganv/fvd.py` 的
-   字节固定副本，SHA256 `c9a1ac…da37`；`tools/eval_signvip_fvd.py` 调用其
-   `get_fvd_feats`/`frechet_distance`；`tools/eval_milestone.py` 固定调用远程正式入口 `tools/eval_signvip_fvd.py`）。
-   `tools/eval_fvd.py` CLI 固定转入远程正式入口，旧 helpers 仅供历史测试/诊断导入，**不得再作为正式对比脚本**。
-   新脚本以「字节 SHA256 锁定 + 与旧实现同输入特征逐位一致」作为校验（2026-10-24 实测
-   max|Δfeature|=0、20 条 FVD 差 1.4×10⁻⁶）；旧脚本的 `--self-check`（≈131）只用于历史复算。
-   - **旧口径作废**：`FVD (R(2+1)D-18 avgpool, 512-d)` 的 22–26 与 N=32 的 51.6–58.4
-     不得再引用、不得与新数字混表（换骨干=换特征空间，Fréchet 无换算关系）。
+   `FVD (I3D-K400 logits, first24 连续 24 帧, 224², test 单侧)`。口径唯一来源是
+   `.trae/documents/FVD_SPEC.md`。
+   - **实现（2026-10-27 用户指令，优先级最高）**：只允许 `video_metric` 包的
+     `calculate_fvd(videos1, videos2, device, method='styleganv', only_final=True)` 原样计算；
+     实现逐字节固定在 `third_party/video_metric/`（SHA256 表见 `FVD_SPEC.md` §3），
+     IO 壳为 `tools/eval_video_metric_fvd.py`，`tools/eval_milestone.py` 固定调用它。
+     旧脚本/旧实现（`tools/eval_signvip_fvd.py`、`tools/eval_fvd.py`、`third_party/signvip/`、
+     `tools/redecode_fvd_frames.py`、`tools/fetch_i3d_weights.py`）已于 2026-10-27 删除。
+   - **禁止**在仓库内重写预处理/特征统计/距离；入口只做数据 IO 与报告。
+   - **旧口径作废**：`FVD (R(2+1)D-18 avgpool, 512-d)` 的 22–26、51.6–58.4，以及 16 帧均匀
+     抽取的 132–185，均不得再引用、不得与新数字混表（换骨干/换取帧 = 换口径，Fréchet 无换算关系）。
    - **回译（SignMbart）不再要求、不再作为对比/晋级指标**；个别语义分析若仍要看回译，
-     只作可选诊断，仍必须走 SignMbart 原协议，且不得与 FVD 主表混排。
-   - **报告格式**：FVD 数字必须带 backbone/feature layer/frames/分辨率/N 与 `protocol` 块；
-     只写 "FVD" 而不注明口径的数字视为无效。
+     只作可选诊断，且不得与 FVD 主表混排。
+   - **报告格式**：FVD 数字必须带 backbone/feature layer/frames/分辨率/N 与 `protocol` 块
+     （含实现与权重的 SHA256）；只写 "FVD" 而不注明口径的数字视为无效。
 
 6. **文本编码器可微调，但必须显式声明（2026-10-17 用户指令，取代 D30）**：新建训练臂可以
    **自由选择** `conditioning.text` 是冻结还是微调（全量微调、LoRA、部分解冻都可），
@@ -161,7 +161,7 @@
 6. **测试集单侧评测（2026-10-15 用户指令，取代 2026-10-14 的双集配对规范）**：
    每一次指标对比（新方法 / 超参 / 求解器 / CFG / 训练预算 / 损失项的任何 A/B）
    **只在测试集上报告**，默认取全量 test、N=642，走固定口径
-   （同采样器与步数、同 CFG、同长度口径、同 FVD 口径（见 `FVD_SPEC_20261021.md`）、同生成种子；
+   （同采样器与步数、同 CFG、同长度口径、同 FVD 口径（见 `FVD_SPEC.md`）、同生成种子；
    回译不再是必需项）。
    - **训练集不再作为对比口径**，新的训练集采样不必再跑（已经跑完的 train 侧产物保留复用，
      可作为过拟合诊断参考，但**不作为晋级依据、不进对比表的主结论**）。
@@ -174,14 +174,14 @@
      的 train 列、`NOTES.md` 的相关结论）保留原文，不重算、不删除；它们与新的单侧结论并存，
      引用时注明口径即可。
 
-6.1 **FVD 口径唯一来源（2026-10-21 用户指令；2026-10-24 脚本改判）**：`FVD_SPEC_20261021.md`
-   是 FVD 的唯一规范；**所有正式 FVD 数字必须由 SignViP 官方脚本产生**
-   （`third_party/signvip/fvd.py`，经 `tools/eval_signvip_fvd.py`；见方法硬约束第 5 条），
-   报告中带 `protocol` 块（实现脚本 SHA256 / backbone / feature layer / frames / 分辨率 / N）与
-   `real_split_half_fvd` 本底。旧 R(2+1)D 口径数字（22–26、51.6–58.4）**已作废**，
+6.1 **FVD 口径唯一来源（2026-10-21 用户指令；2026-10-27 实现切换）**：`FVD_SPEC.md`
+   是 FVD 的唯一规范；**所有正式 FVD 数字必须由 `video_metric.calculate_fvd` 原样计算产生**
+   （`third_party/video_metric/`，经 `tools/eval_video_metric_fvd.py`；见方法硬约束第 5 条），
+   报告中带 `protocol` 块（实现/权重 SHA256、backbone、feature layer、frames、分辨率、N）与
+   `real_split_half_fvd` 本底。旧 R(2+1)D 口径（22–26、51.6–58.4）与 16 帧均匀抽取数字**已作废**，
    只保留在历史日志与 `EXPERIMENT.md` 第 5 节自动生成区作追溯，不得用于任何比较或结论。
-   旧 `tools/eval_fvd.py` 的 `--self-check`（≈131）与 2026-10-24 前的数字只用于历史复算；
-   脚本/实现任何改动都必须重新锁定并记录 SHA256，且用同输入特征等价性验证后才可用于新结果。
+   旧 FVD 脚本、旧实现副本、旧测试与历史 FVD 报告产物已按用户指令删除（2026-10-27）；
+   任何改实现/改口径都必须先改 `FVD_SPEC.md`、重新锁定 SHA 并记 TODO。
 
 7. **决策入 TODO**：所有"定下来"的结论（选定超参 / 采样器 / 预算点、被证伪而关闭的路线、
    新增规范本身）必须登记到 `.trae/todo/TODO.md`，使"还有什么要做 / 已经定了什么"可以直接
@@ -299,15 +299,13 @@
     （大范围改结构/损失/数据管线/训练过程）时，**使用 git 分支**隔离：从 `main`（或约定的基线
     分支）切一条 feature 分支，分支内可**放手修改、不必迁就现有代码结构**，只要最终能带来结果
     提升；不把探索性重构直接堆在 `main` 上。分支的结论按四态规范落盘后合并或保留（见第 20 条）。
-19. **目标指标：最小化官方 I3D-FVD（2026-10-21 用户指令，取代"回译 BLEU-4 ≥ 10"）**：
-    项目的**北极星指标**是 **FVD (I3D-K400 logits, 16 frames, 224²)**（口径 = 方法硬约束
-    第 5 条 + 评测规范第 6/6.1 条 + `FVD_SPEC_20261021.md`，**test 642 单侧**；脚本 = SignViP
-    官方脚本，2026-10-24 用户指令）。
-    **方向 = 越低越好**；所有选点/晋级/方法对比都以 FVD 为主要努力方向与最终验收口径。
+19. **目标指标：最小化官方 I3D-FVD（2026-10-21 用户指令；2026-10-27 实现切换）**：
+    项目的**北极星指标**是 **FVD (I3D-K400 logits, first24 连续 24 帧, 224²)**（口径 = 方法硬约束
+    第 5 条 + 评测规范第 6/6.1 条 + `FVD_SPEC.md`，**test 单侧**；实现 = `video_metric.calculate_fvd`
+    原样计算）。**方向 = 越低越好**；所有选点/晋级/方法对比都以 FVD 为主要努力方向与最终验收口径。
     参照：手语/PHOENIX14T 文献官方 FVD 在**几百**量级（SignViP=1025.45，SignGAN=1431.38，
     SignGen=1715.32；FlashSign 453–597），旧 R(2+1)D 口径的 22–26 **不是**可比的 FVD。
-    四条基线（`prefix60k` / `route_t_align_20k` / `_ema` / `_k4`）的官方 FVD 数值见
-    `FVD_SPEC_20261021.md` 第 4 节（2026-10-21 起重算回填）。
+    历史 FVD 报告产物已按用户指令删除（2026-10-27），新数字一律用新入口重算并写新 `fvd.json`。
 20. **git tree 管理（2026-10-19 用户指令）**：agent 执行 idea/todo 时**同时负责 git 管理**：
     - 大改动开分支（见第 18 条），分支名用主题短名（如 `expert-adaln`、`mtg-grounding`）；
     - 每个"一条臂跑完 / 一次文档规范变更 / 一个可独立说明的改动"应形成**意图单一的 commit**

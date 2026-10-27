@@ -2,3 +2,6 @@
 /reference/DiT/
 __pycache__/
 *.pyc
+
+# DVWA 案例复现官方源码/运行状态（702MB 本地产物，不入库）
+/reference/dvwa-case42-20261027/

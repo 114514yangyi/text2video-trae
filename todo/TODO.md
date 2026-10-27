@@ -1261,7 +1261,9 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   micro1×accum6×world2 = effective batch12（与 E1 等价）；参数 821.92M。权重/输出写
   **`/data1/huyang/text2video/runs/m1_E2/`**（用户重申所有权重放 /data1/huyang，arm 配置已是绝对路径）。
   已挂**自动评测链** `/tmp/m1_E2_chain.sh`（nohup）：等训练 `complete` → 选一张空闲 GPU → 按 first24
-  test640 协议评测 `reports/eval/m1_E2`；结果登记 exp-108。预计 30k ≈ 34h（约 10-25 22:00 前后）。
+  test640 协议评测 `reports/eval/m1_E2`；结果登记 exp-108。**已完成（2026-10-25 23:14 训完 30k，35h21m）**：
+  评测（canonical SignViP 入口）**FVD = 142.3202**（N=640，floor 84.8970），vs E1 129.7493 **更差
+  +12.5709（+9.69%）** → 2b（全层 `[ref;text]`）劣于 2a（分层注入）。权重/报告在 `/data1/huyang/text2video/runs/m1_E2/`。
 - **D70 · 所有 FVD 测试改用 SignViP 官方脚本（2026-10-24 用户指令）**：以后所有 FVD 测试
   **必须使用 SignViP 的官方脚本**。落地：vendor `third_party/signvip/fvd.py`
   （SignViP 仓库 `metrics/fvd/styleganv/fvd.py` 血统；SHA256 `c9a1ac…da37`）+ `tools/eval_signvip_fvd.py`
@@ -1270,9 +1272,34 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   test640、DDIM50/CFG2、raw）；预处理改为 SignViP `preprocess_single`（无抗锯齿）。
   规则写入 `RULES.md` 方法约束 5/评测 6.1/探索 19、`AGENTS.md` 方法约束 5、`FVD_SPEC` §0.0、
   `STRUCTURE.md`；校验 = 脚本/权重 SHA256 + 同输入特征逐位一致（max|Δ|=0，20 条 FVD 差 1.4e-6）。
-  E1 已用新脚本重算、E2 自动评测链已改用新脚本。
+  E1 已用新脚本重测：**FVD = 129.7222（N=640，真值半分 84.8734）**，旧 126.9269 仅历史；
+  E2 自动评测链已改用新脚本（台账 exp-108）。
   ⚠️ 原 SignViP repo 副本在本机迁移时丢失（旧机 reports 未迁移）且本机无外网；本次用的是本机两处
   SLP2025 项目里的同源字节副本。若用户能提供 SignViP 官方 repo 副本，应替换并复核 SHA256/等价性。
+- **D73 · E4（base-3a，加 motion loss）实验启动（2026-10-25 用户指令）**：用户授权继续跑 **E4**。
+  E4 = E1 唯一改动 factor3 `3b`→`3a`：在 `pred_x0` 与 GT latent 上加 `MultiScaleDeltaLoss`
+  （scales 1/2/4、weight 0.1、warmup 2000，逐视频裁剪 padding 后计算）；其余配方同 E1
+  （1a、4c、2a、5b、effective batch12、lr1e-4/text lr1e-5、seed42、30k、DDIM50/CFG2、raw）。
+  2026-10-25 23:53 启动：GPU0/1/2（3×RTX3090，符合 ≤3 约束），world3×accum4=batch12；
+  launcher PID 3973858、rank0 PID 3973883；输出 `/data1/huyang/text2video/runs/m1_E4/`。
+  实测 step1 motion=0.3442、step10=0.3686、step20=0.2896（motion 项已生效）、~3.75s/步、
+  峰值 16.59 GiB。**已完成（2026-10-27 05:29 训完 30k，29h36m）**；自动评测链（canonical SignViP
+  入口，05:29→06:00）结果：**FVD = 130.8486**（N=640，floor 84.8970），vs E1 129.7493
+  **Δ +1.0994（+0.85%，基本持平/略差）** → motion loss 在该配方下未带来可测 FVD 改善
+  （单 seed；E9 是交互臂不能替代本臂）。权重/报告 `/data1/huyang/text2video/runs/m1_E4/`、
+  `reports/eval/m1_E4/`；台账 **exp-110**。
+- **D74 · E6（base-4b，全 12 层文本可训）实验启动（2026-10-27 用户指令）**：用户连续发"开始 E5"/"开始 E6"
+  两条指令，经确认（提问选项 A）按**后一条为准：只跑 E6，E5 暂不启动**。E6 = E1 唯一改动 factor4
+  `4c`→`4b`：文本编码器保留**完整 12 层 mT5 encoder（含 embedding）且全部可训练**，text lr 1e-5；
+  其余配方同 E1（1a、2a、3b、5b、effective batch12、lr1e-4、seed42、30k、DDIM50/CFG2、raw）。
+  2026-10-27 10:26 启动：GPU0/1/2（3×RTX3090，≤3 约束），world3×accum4=batch12；launcher PID 25580、
+  rank0 PID 25606；输出 `/data1/huyang/text2video/runs/m1_E6/`。参数：backbone 607,113,088 +
+  cond 1,481,472 + **text 277,040,256**（E1 的 4c 为 213,325,440）。实测 step1 loss 0.90315、
+  step10 0.85280、step20 0.70819、grad 有限、~4.1 s/步、峰值 **17.93 GiB**（比 E1 高约 1.3 GiB，
+  来自全 12 层文本的可训参数/梯度/Adam 状态）；预计 30k ≈ 33–34h（约 2026-10-28 19:30）。
+  自动评测链 `/tmp/m1_E6_chain.sh`（等 `complete` → 空闲 GPU → canonical SignViP 入口 →
+  `reports/eval/m1_E6`），台账 **exp-111**。注意：E5（4a 冻结全 12 层）未跑，故"文本深度 vs
+  可训练性"的完整分离仍缺一只臂，M1.6 表里需注明。
 - [ ] **M1.6 十臂矩阵**：M1.5 通过且用户明确授权后，再按 E2–E10 排作业（同一份 640 id、同采样器/CFG/
   步数/长度口径/种子）；本轮不排。
 - [ ] **M1-评测 P3 残留（不阻塞 E1）**：① `tools/eval_fvd.py:398-400` 在 contiguous/24 下不可达，
@@ -1297,8 +1324,41 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
 - **D63 · 目标机训练环境配置与验证（2026-10-22 用户授权）**：已新建 conda `text2video`（Python3.12.15、torch2.6.0+cu124），安装迁移依赖和pytest。pip check通过；四张RTX3090 CUDA/bf16、真实缓存/mT5/DiT前向及冻结VAE单帧解码通过；128测试通过、9项Wan缺权重跳过；I3D自检133.91。实际可运行的是迁移DiT入口，PixArt里程碑未实现；未启动训练。环境与启动说明见 `ENVIRONMENT_SETUP_20261022.md`，包版本见 `ENVIRONMENT_PACKAGES_20261022.txt`。
 
 
-- **D67 · FVD强制SignViP原样实现及E7重测（2026-10-24用户指令）**：本轮执行只读旧产物；源码固定third_party/signvip/fvd.py，所有正式CLI改走tools/eval_signvip_fvd.py，E7原640重测并与完整SignViP生成在共同617条first24/256方形/同GT/无补帧下比较。只重测已有视频，不训练、不重新生成。新结果目录reports/eval/m1_E7_signvip_first24_20261024，旧报告保留。规则备份/tmp/text2video-fvd-policy-backup-20261024，分支codex/signvip-first24-fvd-20261024。**已完成**：提交a7756ed；95测试通过；E7全640新FVD126.84746316，共同617的E7=128.47619769、SignViP=218.50745041；见NOTES D67及新台账行。
+- **D67 · FVD强制SignViP原样实现及E7重测（2026-10-24用户指令）**：本轮执行只读旧产物；源码固定third_party/signvip/fvd.py，所有正式CLI改走tools/eval_signvip_fvd.py，E7原640重测并与完整SignViP生成在共同617条first24/256方形/同GT/无补帧下比较。只重测已有视频，不训练、不重新生成。新结果目录reports/eval/m1_E7_signvip_first24_20261024，旧报告保留。规则备份/tmp/text2video-fvd-policy-backup-20261024，分支codex/signvip-first24-fvd-20261024。**已完成**：提交a7756ed；95测试通过；E7全640新FVD126.84746316，共同617的E7=128.47619769、SignViP=218.50745041；见NOTES D67及新台账行。（**已被 D76 取代**：入口与 SignViP 副本已于 2026-10-27 删除。）
 
 - **D68 · 双仓库同步发布与FVD规则固化（2026-10-24用户授权）**：主项目text2video与独立知识库text2video-trae分别提交、拉取、合并并推送各自main；SignViP原样源码/入口/测试随主项目发布，AGENTS/README及知识库RULES/FVD_SPEC明确以后强制此实现。权重、runs/reports和嵌套.git不并入主仓库；保留全部历史结果。
 
-- **D71 · FVD 统一远程正式入口（2026-10-24 用户裁决）**：以远程 `tools/eval_signvip_fvd.py` + `third_party/signvip/fvd.py` 为唯一 FVD 测试入口，移除本地重复 runner/vendor 和对应测试，不保留 legacy 选择；旧自动链的 `--fvd-tool signvip` 仅作兼容参数，仍固定进入远程脚本。旧 `tools/eval_fvd.py` CLI 已委托正式入口；历史结果保留且不与新口径混表。E2 新台账编号 exp-108，避免与远程 D57 的 exp-100 冲突；本地训练产物未删除。双仓库分别合并并推送 main。
+- **D71 · FVD 统一远程正式入口（2026-10-24 用户裁决）**：以远程 `tools/eval_signvip_fvd.py` + `third_party/signvip/fvd.py` 为唯一 FVD 测试入口，移除本地重复 runner/vendor 和对应测试，不保留 legacy 选择；旧自动链的 `--fvd-tool signvip` 仅作兼容参数，仍固定进入远程脚本。旧 `tools/eval_fvd.py` CLI 已委托正式入口；历史结果保留且不与新口径混表。E2 新台账编号 exp-108，避免与远程 D57 的 exp-100 冲突；本地训练产物未删除。双仓库分别合并并推送 main。（**已被 D76 取代**：整个 SignViP 入口链已删除。）
+
+- **D72 · E1 远程正式 FVD 重测完成（2026-10-24）**：FVD **129.7222078577488**，真值半分 **84.87336765689959**，test640/first24/源256→官方224/I3D400/CPU；复用既有raw/DDIM50/CFG2/GT长度/seed42生成视频，远程配置一致。结果 `reports/eval/m1_E1_base_signvip/fvd.json`，已核验特征、清单和SHA并重新调用官方距离函数；见exp-109及NOTES D72。旧126.9269只作历史口径。
+
+- **D75 · 案例4-2独立DVWA教学复现（2026-10-27用户授权）**：完成反射型/存储型XSS四级实测与可复现报告；官方源码及运行状态仅在`.trae/reference/dvwa-case42-20261027/`，过程及报告在`.trae/documents/`；独立数据库及回环端口，不改模型代码，不用GPU，不操作已有数据库。
+
+  **D75完成记录（2026-10-27）**：34/34主实验、2/2补充核验；报告与完整包位于`.trae/documents/CASE42_复现报告_20261027/`，复跑入口`.trae/reference/dvwa-case42-20261027/scripts/reproduce.py`。本机主站127.0.0.1:18042保留运行；实测及交付见NOTES D75、exp-112。该项为独立教学任务，不改变模型方案或FVD规范。
+
+- **D76 · FVD 改为 video_metric 原样计算，删除旧脚本/旧约束/历史报告（2026-10-27 用户指令）**：
+  用户指令："以后所有的 FVD 测试不再使用原先的任何脚本了，而是使用
+  `/home/huyang/data/trae_projects/video_metric` 中的 FVD 原样计算方式……把以前的 FVD 计算
+  脚本以及计算约束都删除，然后和 github 同步（两个 .git 都同步）"。执行：
+  ① 正式 FVD 只允许 `video_metric` 的 `calculate_fvd(videos1, videos2, device,
+     method='styleganv', only_final=True)` 原样计算；实现逐字节固定在 `third_party/video_metric/`
+     （上游 `JunyaoHu/common_metrics_on_video_quality` 的副本）。用户给的路径在评测机上不存在
+     （`/home/huyang` 整个目录没有），从本机同源副本
+     `/home/hulala/gsw/SLP2025/VideoVAET/video_metric` 逐字节拷贝；SHA256 表见 `FVD_SPEC.md` §3。
+  ② 新增 IO 壳 `tools/eval_video_metric_fvd.py`（只做清单/帧/报告，无任何指标数学），
+     `tools/eval_milestone.py` 生成后固定调用它；数据层协议不变（test 固定 640 清单、
+     first24 连续 24 帧、不补帧、256² → 上游 224²、真值半分本底）。
+  ③ 删除旧代码：`tools/eval_fvd.py`、`tools/eval_signvip_fvd.py`、`third_party/signvip/`、
+     `tools/redecode_fvd_frames.py`、`tools/fetch_i3d_weights.py`、`tests/test_eval_fvd.py`、
+     `tests/test_signvip_fvd.py`，以及 `tests/test_milestone_eval.py` 中两个旧 FVD 测试。
+  ④ 删除旧 `FVD_SPEC_20261021.md` 及其中全部旧约束（SignViP 强制入口、SHA 锁定、
+     `--self-check≈131`、617/640 双 N、旧 helpers 条款等）；新唯一规范 = `.trae/documents/FVD_SPEC.md`，
+     AGENTS/RULES/README/STRUCTURE/CONTEXT 对应条款同步改写。
+  ⑤ 按用户选择（删除范围 B）删除历史 FVD 报告产物：`reports/eval/**/fvd*.json`、`fvd*.npz`、
+     `fvd*.lock`、`fvd_command.json`、`real_floor.json` 与 `reports/eval/fvd_ref/`；
+     生成帧、`ids.txt`、`protocol.json` 等非 FVD 产物保留。
+  数值等价：旧 `third_party/signvip/fvd.py` 与 `video_metric/fvd/styleganv/fvd.py` SHA256
+  相同（`c9a1ac…da37`）、I3D 权重相同（`bec651…0a5e2`）、协议不变，故历史 FVD 数值
+  （E1 129.7493、E2 142.3202、E4 130.8486 等）在数值上仍等价于新链路结果，但证据文件已删，
+  只作历史引用、不计入新表。E6 训完后的评测自动走新入口。
+  两项 `.git`（主仓库 `text2video` + 知识库 `text2video-trae`）分别提交并推送 main。

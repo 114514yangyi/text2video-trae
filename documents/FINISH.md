@@ -58,7 +58,7 @@
 - 产物：分支 `milestone1-pixart` 实现提交 `730b3a6`/`da264fc`/`8733c10`/`c26dc71`/`d71b23d`/`131390b` + 评测修复 `85952a6`；十臂配置 `configs/milestone1/{base,E1..E10}.yaml`；训练 `t2v/train.py`；采样/评测 `t2v/pipelines/milestone.py`、`tools/eval_milestone.py`；E1 运行目录 `runs/m1_E1_base/`（运行中）。
 - 复现命令：训练（用户约束 ≤3 GPU，D65 配方 batch12）`CUDA_VISIBLE_DEVICES=0,1,2 python -m torch.distributed.run --standalone --nproc_per_node=3 -m t2v.train --config configs/milestone1/E1.yaml`；评测 `python tools/eval_milestone.py --config runs/m1_E1_base/config.yaml --checkpoint runs/m1_E1_base/final.pt --out reports/eval/m1_E1_base --gpu cuda:0`。
 - 判据：first24 test 单侧官方 I3D-FVD（N=640/642、真值本底 84.2975），非 NaN、可复现两次；本轮无十臂对照结论。
-- 现状数字：全仓 **91 passed**（Lead 独立复跑 `/tmp/m1-lead-final-suite-20261022.log`）；小尺寸 pilot FVD 1532.37 仅管线证据，不进入正式表。E1 首启为 4 卡/batch16（step1110 时按用户 GPU≤3 约束中止并归档 `runs/m1_E1_base_4gpu_aborted_20261022/`，其 step1000 checkpoint 三模块 raw/EMA、优化器、RNG、config 与视觉回调均已验收）；**正式 run 为 3 卡/batch12 从 0 重训，已于 2026-10-24 07:40 训完 30k 步（32h01m，final.pt 13.68 GiB 已校验）**；正式 first24 test640 **FVD = 126.9269**（N=640、raw 权重、真值本底 84.2975、mean_feature_l2 32.32）；同协议第二次评测（第一次在 43/640 时因共享机根盘 ENOSPC 中止，改存 `/data1/huyang` 后重跑）**逐位相同 = 126.92693857176755** → M1.5"可复现两次"判据通过。权重与 run 目录已迁至 `/data1/huyang/text2video/runs/`（仓库内软链）。
+- 现状数字：全仓 **91 passed**（Lead 独立复跑 `/tmp/m1-lead-final-suite-20261022.log`）；小尺寸 pilot FVD 1532.37 仅管线证据，不进入正式表。E1 首启为 4 卡/batch16（step1110 时按用户 GPU≤3 约束中止并归档 `runs/m1_E1_base_4gpu_aborted_20261022/`，其 step1000 checkpoint 三模块 raw/EMA、优化器、RNG、config 与视觉回调均已验收）；**正式 run 为 3 卡/batch12 从 0 重训，已于 2026-10-24 07:40 训完 30k 步（32h01m，final.pt 13.68 GiB 已校验）**；正式评测（2026-10-24 起统一用 SignViP 原样入口 `tools/eval_signvip_fvd.py`）**FVD = 129.7493**（N=640、raw、canonical 入口 batch8/GPU，真值半分 84.8970；batch4/CPU 复算 129.7222，差 0.03%）；旧本地实现同帧为 126.9269（历史值，不用于新对比；两次逐位一致，且 15360 张生成帧逐字节相同）。权重与 run 目录在 `/data1/huyang/text2video/runs/`（仓库内软链）；正式报告 `reports/eval/m1_E1_base_signvip/`。
 - 状态：**M1.5 完成**（训练+评测+两次复现均通过）；M1.6 十臂效果对比待用户授权。日期：2026-10-22（训练/评测完成 2026-10-24）。
 
 ## F-017 · 里程碑1 E7（base + 前缀注入）30k 训练与 first24 官方 I3D-FVD（2026-10-24）
@@ -69,3 +69,19 @@
 - 判据/数字：30k 步 22.8 h（末段 2.81 s/步，峰值 13.58 GiB，3 卡 effective batch12，RTX4090+2×RTX3090 混卡）；**FVD 124.073294**（N=640），真值半分本底 84.297514，相对本底 **+47.2%**；生成特征 L2 32.114±6.701。
 - 状态：**已完成待裁决**——E1 base 同口径 FVD 未在本机产出（E1 运行在 `/home/wxy` 主机），本轮只有单点基准，不能与 E1 比较，也不能据此判断"换注入通路更优/更差"。
 - 日期：2026-10-24。
+
+## F-018 · 里程碑1 E2（2b 全层 [ref;text]）30k 训练与正式 FVD（2026-10-25）
+
+- 来源：TODO **D69**（用户授权继续跑 E2）。
+- 产物：`/data1/huyang/text2video/runs/m1_E2/`（`final.pt` 13.68 GiB、30 组视觉回调、metrics）；`reports/eval/m1_E2/{fvd.json,fvd.npz,protocol.json}`（canonical SignViP 入口，batch8/GPU0）。
+- 复现命令：训练 `CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.run --standalone --nproc_per_node=2 -m t2v.train --config configs/milestone1/E2.yaml`（本机实际 2 卡、world2×accum6=batch12）；评测 `python tools/eval_milestone.py --config /data1/huyang/text2video/runs/m1_E2/config.yaml --checkpoint .../final.pt --out reports/eval/m1_E2 --gpu cuda:0`（固定 canonical 入口）。
+- 判据/数字：训练 35h21m、末 3k 步 loss 0.0171；**FVD = 142.32016432887428**（N=640，raw，真值半分 84.8970）。vs E1（129.7493，同入口同协议）：**Δ +12.5709（+9.69%，更差）**。
+- 状态：**已完成待裁决**（单 seed；E1 3 卡 vs E2 2 卡、同 effective batch12/同为 3090，结论需与 M1.6 条件臂合读）。日期：2026-10-25。
+
+## F-019 · 里程碑1 E4（3a motion loss）30k 训练与正式 FVD（2026-10-27）
+
+- 来源：TODO **D73**（用户授权继续跑 E4）。
+- 产物：`/data1/huyang/text2video/runs/m1_E4/`（`final.pt` 13.68 GiB、30 组回调、metrics）；`reports/eval/m1_E4/{fvd.json,fvd.npz,protocol.json}`（canonical SignViP 入口，batch8/GPU0）。
+- 复现命令：训练 `CUDA_VISIBLE_DEVICES=0,1,2 python -m torch.distributed.run --standalone --nproc_per_node=3 -m t2v.train --config configs/milestone1/E4.yaml`；评测 `python tools/eval_milestone.py --config /data1/huyang/text2video/runs/m1_E4/config.yaml --checkpoint .../final.pt --out reports/eval/m1_E4 --gpu cuda:0`。
+- 判据/数字：训练 29h36m；**FVD = 130.84863100287862**（N=640，raw，真值半分 84.8970）。vs E1（129.7493，同入口同协议）：**Δ +1.0994（+0.85%，基本持平/略差）**。
+- 状态：**已完成待裁决**（motion loss 未带来可测 FVD 改善；单 seed，E9 交互臂不能替代本臂）。日期：2026-10-27。
