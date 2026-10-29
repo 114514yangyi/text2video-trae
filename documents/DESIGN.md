@@ -88,7 +88,9 @@ B−A 等预算配对差及 FVD，并单独检查文本预测长度部署。test
       B1 +4.71 / B2 +4.16 / ROUGE-L +6.60（基线 +0.56 / +2.37 / +2.85）。
       → 文本塌缩从"条件≈无效"变为"条件有效、绝对对齐仍有限"（GFSLT 口径 B4≈2.9；
       SignMbart 口径生成 B4 全为 0，GT 上限 29.51）。
-- [X] 评测：FVD（`tools/eval_fvd.py`）+ 生成视频回译。**现行链路为 SignMbart**
+- [X] 评测：FVD + 生成视频回译。**现行 FVD 链路 = `video_metric` 原样 `calculate_fvd`**
+      （入口 `tools/eval_video_metric_fvd.py`，2026-10-27 起；旧 `tools/eval_fvd.py` 已删除）；
+      回译链路为 SignMbart
       （`tools/run_bt_eval_signmbart.sh`，2026-10-13 纪律 #5）；`tools/run_bt_eval.sh`（GFSLT）
       仅作历史口径，不得与新数字混表。
 - [X] 长度预测器（`t2v/train_length.py`，文本→长度桶，acc 0.41 / MAE 18.3）替换 oracle 长度

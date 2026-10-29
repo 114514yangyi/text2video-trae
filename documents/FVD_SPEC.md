@@ -138,7 +138,7 @@ $PY tools/eval_milestone.py --config runs/m1_E5/config.yaml \
   重新生成后才能补表。
 
 报告与日志：`reports/eval/m1_{E3,E5,E7}_first52_videovaet_20261029/fvd_videovaet.json`、
-`log_eval_{E3,E5,E7}_first52.log`；台账 `EXPERIMENT.md` exp-117/118/119。
+`log_eval_{E3,E5,E7}_first52.log`；台账 `EXPERIMENT.md` exp-121/122/123。
 
 > **历史（已作废）**：同日更早的 24 帧过渡口径给 E3 1107.53 / E7 1112.43 / E5 1117.90
 > （floor ≈1625，N=640），只作追溯，不得与本表并列。

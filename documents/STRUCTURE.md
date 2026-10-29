@@ -12,9 +12,9 @@
 - `t2v/pipelines/milestone.py`：GT长度采样、首帧一次、固定前24帧解码、训练可视化，完整raw/EMA一致载入。
 - `tools/eval_milestone.py`：固定清单、显式pilot、生成后固定调用 `tools/eval_videovaet_fvd.py`（videovaet_fvd 口径，含真值互配本底）。
 - `configs/milestone1/{base,E1..E10}.yaml`：全部十臂仅用配置切换；本轮只启动 E1。
-- 新测试：test_pixart/test_milestone_text/test_milestone_training/test_milestone_eval。
+- 新测试：test_pixart/test_milestone_text/test_milestone_training/test_milestone_eval/test_video_metric_fvd。
 
-实际24帧清单为 test640/642（两条不足24），`reports/eval/samples/m1_test_first24_ids.txt`；24帧从frame0开始的官方I3D-400本底84.297514，证据 `reports/eval/m1_first24_prepare_20261022/real_floor.json`。与旧16帧表不混。
+实际24帧清单为 test640/642（两条不足24），`reports/eval/samples/m1_test_first24_ids.txt`；24帧从frame0开始的官方I3D-400本底84.297514。旧 FVD 报告产物（含当时的 `real_floor.json`）已于 2026-10-27 按用户指令删除，本底需用 `tools/eval_video_metric_fvd.py --fill-ref-cache` 重算；与旧16帧表不混。
 
 
 > 权威文档：根目录 `README.md`（目标/命令/产物/差异表）。本文件随代码结构变动同步维护。

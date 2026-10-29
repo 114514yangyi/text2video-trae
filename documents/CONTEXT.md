@@ -44,7 +44,7 @@
 
 | 词 | 定义 |
 | --- | --- |
-| **官方 FVD** | I3D Inception-v1（Kinetics-400）**400-d logits** 特征的 Fréchet 距离；实现 `tools/eval_fvd.py` |
+| **官方 FVD** | I3D Inception-v1（Kinetics-400）**400-d logits** 特征的 Fréchet 距离；实现 = `third_party/video_metric/calculate_fvd.py`（`method='styleganv'`，2026-10-27 起），入口 `tools/eval_video_metric_fvd.py` |
 | **24 帧口径** | **从头抽取 24 帧**（2026-10-22 裁决，第二轮改为从头）：每条视频取 frame 0→23，官方 I3D 模型与代码不变；不足 24 帧的样本跳过，**有效 N ≈613** 且 id 清单跨臂共用；与历史 16 帧表**不可混** |
 | **有效 N** | 24 帧口径下因短片被跳过而剩下的评测样本数，报表必须写明；标题里的 640 是 16 帧口径的数字 |
 | **骨架超参** | PixArt-α 原尺寸：**28 层 / 1152 宽 / 16 head**（2026-10-22 裁决 Q8） |
@@ -52,4 +52,3 @@
 | **4c 训练范围** | `mT5 embedding + encoder.layer[0:3]`（"前 3 层"含 embedding，Q7）；其余层丢弃 |
 | **长度规则** | 本里程碑**不做长度预测**：训练用样本自身长度，评测/生成用 **GT 长度**（2026-10-22 裁决） |
 | **真值本底** | `real_split_half_fvd`：真值自身半分的 FVD，模型分数低于它要先怀疑管线 |
-| **自检** | `--self-check` 用官方权重算出的参考值，应约 131（判据 100–180） |

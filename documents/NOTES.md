@@ -1397,6 +1397,30 @@ average-pool** + ImageNet 归一化（有效 112²），特征空间完全不同
 
 已配置独立 `text2video` 环境。依赖一致性、四卡CUDA/bf16、真实缓存→本地mT5→DiT前向、冻结VAE校验及单帧解码通过；128 passed / 9 skipped（Wan权重未打包）。I3D常量输入自检133.908176。迁移949332文件仅.git/index摘要不同，其余匹配。未启动训练、未实测batch16反向峰值显存。证据和启动命令：`ENVIRONMENT_SETUP_20261022.md`；决策D63。
 
+## 2026-10-24 · 里程碑1 E1 base 训练完成：FVD 126.93（first24/N=640，本底 84.30，两次逐位一致）
+
+**结论**：里程碑1 的 base 臂 E1（PixArt-α 骨架 28×1152/16、1a cross-attn 分层 `[T,T,T,R]×7`、
+4c mT5 前3层+embedding 可训、2a、3b 无 motion、5b from scratch）训练 30k 步后，按
+first24 协议（contiguous 24 帧含 frame0、官方 I3D-K400 400d logits、224²、DDIM50/CFG2、
+GT 长度、seed42、raw 权重、test 单侧）测出 **FVD = 126.92693857176755**（N=640/642；
+真值半分本底 `real_split_half_fvd` = 84.29751411436246；mean_feature_l2 32.32±6.53）。
+同协议第二次评测**逐位相同**（FVD、ids SHA256 均一致），说明整条生成/计分链路确定可复现，
+M1.5 判据（非 NaN、不低于真值本底、可复现两次）通过。
+
+**读法**：这是 from-scratch、30k 步、有效 batch12、无预训练先验的基准数，约为真值本底的
+**1.51×**——有信号但离真值分布仍有明显差距，不能当作方法有效性证据；也不能与旧 16 帧
+R(2+1)D 口径（22–26）或 SignViP 32 帧/272×224 口径（156–260）数字混表。它是 M1 十臂矩阵
+**唯一分母**（E2–E10 均相对它单因子改动）。
+
+**产物/证据**：`/data1/huyang/text2video/runs/m1_E1_base/`（final.pt/last.pt 13.68 GiB，
+30 组视觉回调，metrics）；`reports/eval/m1_E1_base/{fvd,protocol}.json` 与
+`reports/eval/m1_E1_base_repeat/`；执行记录 `MILESTONE1_EXECUTION_20261022.md`；
+台账 `EXPERIMENT.md` exp-099。
+
+**限制**：只有 30k 终点一个评估点（无中间 ckpt 的 FVD 曲线，P3 清理后可低成本补）；
+只测了 raw 权重，EMA 口径未测（用户待裁决）；batch 因用户 GPU≤3 约束由 16 改为 12（D65），
+与十臂后续必须保持同一 batch。
+
 ## 2026-10-24 D66 · 里程碑1 E7（1b 前缀注入）30k 完成：first24 官方 I3D-FVD = 124.0733
 
 训练：`configs/milestone1/E7.yaml`（base + factor1=1b，其余因子 4c+2a+3b+5b）从 0 训 30k，三卡 0/4/5（1×RTX4090 + 2×RTX3090），micro1×accum4×world3 = effective batch12，seed42，bf16，EMA0.9999；10-23 14:11 → 10-24 13:00，82157 s（22.8 h），末段 2.81 s/步，峰值 13.58 GiB；loss 5k 0.0218 / 10k 0.0203 / 15k 0.0191 / 20k 0.0188 / 25k 0.0139 / 30k 0.0190，末 200 步均值 0.0166。
@@ -1407,7 +1431,77 @@ average-pool** + ImageNet 归一化（有效 112²），特征空间完全不同
 
 口径注意：① E1 base 的 30k 在 `/home/wxy` 主机上跑（`MILESTONE1_E1_LAUNCH*.json` 记录），本机无同口径 FVD，**不得**把 E7 与本机旧口径数字（R(2+1)D-18 / 240 prompts 等）横比；② 本 run 为 4090+2×3090 混卡，E1 为 3×3090，对照表须标卡型差异；③ 评测期间 `/data` 只剩 5.9 GiB，已删除与 `final.pt` 同为 step30000 的 `runs/m1_E7/last.pt`（12.3 GB）腾空间，`final.pt` 保留可复现（如需 resume 点，可由 `final.pt` 复制恢复）。
 
-## 2026-10-26 exp-112 · E3（factor2=2c）首测：141.83，train loss 不能当 FVD 代理
+## 2026-10-24 D67 · 强制SignViP原样FVD后E7重测与匹配对照
+
+用户要求正式FVD直接用SignViP源码。本轮把原始`metrics/fvd/styleganv/fvd.py`逐字保存到`third_party/signvip/fvd.py`（SHAc9a1acbf...fda37），入口`tools/eval_signvip_fvd.py`只负责IO/first24人口/统一源几何，预处理/特征提取/距离均调用原函数；权重SHA bec6519f...a5e2。`eval_milestone.py`和旧`eval_fvd.py`CLI统一走新入口。代码a7756ed，分支codex/signvip-first24-fvd-20261024。95项目测试通过，19项相关测试通过；官方常量视频自检133.6239。第三方源自身含一行尾空格，为保持逐字一致未改。
+
+既有E7 raw PNG首24、GT首24均256方形；新评测无抗锯齿（官方函数）、224中心裁剪。E7全640 **126.84746316**，真值半分84.88998481；旧本地实现124.07329367保留为历史值，当前正式SignViP实现以126.84746316为准。
+
+完整SignViP发布权重生成中有23条在E7清单内但不足24帧，不补帧，匹配交集617。两者用同GT、相同617ID、先256方形（SignViP输出由272×224转为256方形；E7/GT原本256方形不改变）、同官方预处理、同I3D和统计：**E7 128.47619769 vs SignViP 218.50745041**，共同真值半分89.08661494。之前无这一整套完全匹配的结果；旧613条24帧结果不是本轮对照。
+
+评测条件统一，不代表生成配方统一：E7 DDIM50/CFG2.0/GT长度/raw/PNG；SignViP DDIM50/CFG3.5/文本预测长度/官方MP4，参考首帧均有。故只报告此共享FVD协议下的实测，不能宣称论文1025.45已复现或所有生成变量完全受控。
+
+原始结果`reports/eval/m1_E7_signvip_first24_20261024/fvd.json`，全部特征/ID保存在同名npz，command/comparison_setup/code_version记录可追溯。已复读这些特征重新调用官方距离函数、核对640及617唯一ID与mask顺序、源码及wrapper SHA，一致。未训练、未重新生成、未删除旧产物。
+
+## 2026-10-24 · E1 按 SignViP 原样入口重测：FVD 129.7222（canonical）
+
+**背景**：用户 2026-10-24 指令要求所有 FVD 测试改用 SignViP 官方脚本。正式入口固定为
+`tools/eval_signvip_fvd.py` → `third_party/signvip/fvd.py`（SHA256 `c9a1ac…da37`，I3D 权重
+`bec6519f…0a5e2`），`tools/eval_milestone.py` 固定调用该入口；旧 `tools/eval_fvd.py` 只作历史/诊断。
+
+**做法**：用同一批已生成的 E1 首 24 帧（frame0 + 23 预测帧）与 GT 首 24 帧（源帧 0..23），
+统一 256×256 源几何后交给 SignViP 原函数 `preprocess_single`（张量双线性、**无抗锯齿**、
+短边 224 + center crop、[-1,1]）与 `get_fvd_feats`，再用原 `frechet_distance` 计算；
+N=640，raw 权重，DDIM50/CFG2/GT 长度/seed42 均不变。
+
+**结果**：**FVD = 129.7222078577488**（N=640），真值半分本底 **84.87336765689959**，
+生成特征 L2 32.441±6.552。对照：旧本地实现（PIL 抗锯齿路径）同帧同协议为 **126.92693857176755**
+（两次逐位一致）——差异 +2.795（约 +2.2%）来自官方 `preprocess_single` 的无抗锯齿预处理，
+属于脚本口径差异，不是模型或数据差异。两套独立封装（本地草稿入口与 canonical 入口）在同一
+输入上给出**完全相同**的 FVD（129.7222078577488），可作为入口正确性的交叉校验。
+
+**判读**：M1.6 十臂对比的分母从本日起使用 **129.7222（canonical SignViP 入口，floor 84.8734）**；
+126.9269 仅作为历史口径保留、不得与 canonical 数字混表。注意 E1 训练于 3×RTX3090、E7 于
+RTX4090+2×3090 混卡，跨臂比较仍须标注硬件差异（D66/D67）。
+
+**产物**：`reports/eval/m1_E1_base_signvip/{fvd.json,fvd.npz}`；`reports/eval/m1_E1_base{,_repeat}/`
+旧报告保留为历史；`MILESTONE1_EXECUTION_20261022.md`。
+
+## 2026-10-24 D72 · E1 远程正式 SignViP FVD 重测完成
+
+E1 base 的新口径结果为 **FVD 129.7222078577488**，test有效N=640，真值半分本底 **84.87336765689959**。使用远程 `tools/eval_signvip_fvd.py`，上游 `third_party/signvip/fvd.py` SHA256 c9a1acbf811c3050d92b5289f4a4789ba6209a71a5bafbeba10df5576ffbda37；wrapper SHA256 8e4311937dc31b7380dc0da4fdb736bdd7551e51176b64acd4cc1231f08413f5，主仓提交3f0afd4。
+
+复用E1已有640条首24帧PNG；全部相关配置与远程E1一致（模型、条件、数据、VAE、扩散、采样、评测），固定清单SHA256 6f96ad9dda2721b877dea1f08dab7bbf17bb4c6bcb9d90becb665824a69110f6。原生成raw/DDIM50/CFG2/GT长度/seed42；训练文本前3层+embedding可训、text lr1e-5。源统一256方形，经官方no-AA预处理到224中心裁剪，I3D-K400 400d logits，首24帧含frame0、不补帧。所有GPU均被占用，本次CPU计分；没有重训或重新生成。
+
+原任务PID3719637已经在运行，发现后终止本轮重复PID3720666，继续跟踪并独立核验原任务产物。真值和生成特征均为640×400且有限，ID与清单完全一致，源码/权重SHA锁定。保存特征重新调用官方距离函数得到129.72220785883525（与报告差约1.1e-9）；本底复算84.87336669963007（差约9.6e-7，数值库计算误差）。旧126.9269留作历史口径，不能将口径变化解释为模型质量变化；与其他设备上的分数比较时须注明CPU/GPU差异。
+
+正式结果和特征：`reports/eval/m1_E1_base_signvip/fvd.json`、`fvd.npz`；日志 `/tmp/m1_sv_canonical_e1.log`；本轮配置快照、命令与核验证据 `reports/eval/m1_E1_remote_signvip_20261024/`。台账exp-109。
+
+## 2026-10-25 · 里程碑1 E2（2b 全层 [ref;text]）完成：FVD 142.32，劣于 E1 的 129.75
+
+**做法**：E2 = E1 唯一改动因子 2 `2a`→`2b`（28 层 cross-attn 全部注入 `[ref;text]`），其余配方
+完全同 E1（1a、4c、3b、5b、effective batch12、lr1e-4/text lr1e-5、seed42、30k、DDIM50/CFG2、raw）。
+训练 2026-10-24 11:54 → 10-25 23:14，共 **127,248.8 s = 35.35 h**（2×RTX3090，world2×accum6=batch12，
+末 3k 步 loss 0.0171，峰值显存 16.64 GiB，30 组视觉回调）。
+
+**评测**（canonical SignViP 原样入口，first24/N=640、GT 长度、frame0、raw、256²→官方 224²、
+batch8/GPU0）：**FVD = 142.32016432887428**（N=640，`skipped_short=[]`，真值半分 **84.89697227815674**）。
+E1 同协议重算（同一入口、batch8/GPU）为 **129.74927595301466**（floor 84.89697227815674，与 E2
+逐位一致），因此 **Δ(E2−E1) = +12.5709（相对 +9.69%）→ E2 更差**。
+
+**读法**：在相同预算/帧协议/真值/入口下，把 ref+text 拼成一份 K/V 喂给所有层（2b）比 E1 的
+"text 层只看 text、ref 层只看 ref"（2a，`[T,T,T,R]×7`）明显更差。可能的机制：全局拼接使 ref 与
+text 在每一层互相竞争、削弱分层专业化；但这只是一个 seed、且 E1 为 3 卡/E2 为 2 卡（同 effective
+batch12、同为 3090，rank 划分/RNG 不同），不能当作强因果结论，需 M1.6 的条件臂一起读。
+
+**参照（同 canonical 入口）**：E7（1b 前缀注入，4090+2×3090 混卡训练）126.8475 < E1 129.7493 <
+E2 142.3202；E1/E2 与 E7 的硬件不同，跨臂表须标注卡型。E2 的旧本地实现数字不单独保留
+（该 run 只做过 canonical 评测）。
+
+**产物**：`/data1/huyang/text2video/runs/m1_E2/`（final.pt 13.68 GiB、30 组回调）；
+`reports/eval/m1_E2/{fvd.json,fvd.npz,protocol.json}`；自动评测链日志 `/tmp/m1_E2_chain.log`。
+
+## 2026-10-26 exp-118 · E3（factor2=2c）首测：141.83，train loss 不能当 FVD 代理
 
 E3（`configs/milestone1/E3.yaml`，layer_plan `[text,text,text,ref+text]×7`）3 卡 from scratch 30k 于
 2026-10-25 13:12 → 10-26 16:33 完成（27 h 14 m，均 3.27 s/步，峰值 16.61 GiB，final.pt 13.68 GiB），
@@ -1418,7 +1512,101 @@ E3（`configs/milestone1/E3.yaml`，layer_plan `[text,text,text,ref+text]×7`）
 - **可复用观测**：E3 末 200 步 train/loss 0.01718，低于 E7 的 0.0166 区间（5k 0.0506 → 30k 0.0179），
   但 FVD 反而差 15。⇒ 在本配方族里 train/loss 与 I3D-FVD **不同向**，调参/选点不能只看训练损失。
 - 局限：E3 与 E7 在 factor1+factor2 上同时不同，2c 的单独贡献无法拆出；E1 base 官方 FVD 仍缺。
-  裁决与复活条件见 `FAIL.md` FAIL-048；台账 `EXPERIMENT.md` exp-112。
+  裁决与复活条件见 `FAIL.md` FAIL-048；台账 `EXPERIMENT.md` exp-118。
+
+## 2026-10-27 · 里程碑1 E4（3a motion loss）完成：FVD 130.85，与 E1 129.75 基本持平
+
+**做法**：E4 = E1 唯一改动因子 3 `3b`→`3a`：`MultiScaleDeltaLoss`（scales 1/2/4、weight 0.1、
+warmup 2000）作用在 `pred_x0` 与 GT latent 的逐视频多尺度时间差分 MSE 上；其余配方完全同 E1
+（1a、4c、2a、5b、effective batch12、lr1e-4/text lr1e-5、seed42、30k、DDIM50/CFG2、raw）。
+训练 2026-10-25 23:53 → 10-27 05:29，共 **106,535.8 s = 29.59 h**（3×RTX3090，world3×accum4=batch12，
+末段 mse 0.0201 + 0.1×motion 0.0195 = loss 0.0220，grad 0.056，峰值 16.59 GiB，30 组回调）。
+
+**评测**（canonical SignViP 原样入口、first24/N=640、GT 长度、frame0、raw、256²→官方 224²、
+batch8/GPU0，05:29→06:00）：**FVD = 130.84863100287862**（N=640，`skipped_short=[]`，
+真值半分 **84.89697227815674**，与 E1/E2 逐位一致 → 协议完全相同）。
+
+**对照**（同入口/同协议）：E1（2a，无 motion）**129.7493**；E4（2a + motion）**130.8486** →
+**Δ +1.0994（+0.85%）**；E2（2b）142.3202；E7（1b，混卡训练）126.8475。
+即 **motion loss 在当前配方下没有带来可测的 FVD 改善**：E4 与 E1 基本持平（略差 0.85%），
+该差值在单 seed 的训练/数值噪声量级内，不能据此断言 motion loss 有害。E9（1c+3a）是交互探针，
+不能替代 E4 对"1a 下 motion 是否有效"的回答；若要做功效更强的判断，需要多 seed 或先看
+E4 与 E1 在其它诊断量（如运动幅度/帧间差分）上的差异。
+
+**产物**：`/data1/huyang/text2video/runs/m1_E4/`（final.pt 13.68 GiB、30 组回调）；
+`reports/eval/m1_E4/{fvd.json,fvd.npz,protocol.json}`；链日志 `/tmp/m1_E4_chain.log`。
+
+## 2026-10-27 · D75 案例4-2教学靶场复现完成（非模型实验）
+
+用户授权在本服务器复现所附DVWA反射型/存储型XSS案例并交付报告。采用官方tag2.3（commit 34a10d4166dcdc31f9641cf36ba5bd0fc1d4c59c），191个上游原文件与源码包逐字一致；只新增本地配置。独立MySQL5.7端口13342、PHP7.4端口18042均只监听127.0.0.1，不操作现有数据库、不占GPU、不改模型代码。
+
+最终一轮`reference/dvwa-case42-20261027/results/20261027_193731/summary.json`：反射型16+存储型18，共34/34符合预期；提交、GET刷新、新会话的弹框内容经独立检查；2/2 Cookie补充核验通过，无外部请求。impossible使用有效令牌验证HTML编码，错误/缺失令牌另做对照；实际源码公共输出函数会编码旧留言，已据实纠正初始假设。前两轮调试记录保留，最终结果仅取本轮。
+
+产物：`documents/CASE42_复现报告_20261027/`，含20页PDF、DOCX、独立HTML、Markdown与完整ZIP（352个条目，15,127,861字节，逐项SHA256校验通过）。ZIP含脚本、锁定依赖、官方源码包、小型PHP扩展包、原始证据、19个独立实验库逻辑备份及七张原始教材图。启动/停止/重启后22个本轮及调试练习库数量一致；保留本机主服务，18043/18044临时服务已停止。主项目Git状态与任务前一致（原有未跟踪tools/make_milestone_compare_video.py未动）。
+
+本条为独立教学任务，不参与手语模型晋级或FVD比较；台账exp-112另列。
+
+## 2026-10-27 · FVD 实现切换为 video_metric 原样计算（用户指令）
+
+**用户指令**：以后所有 FVD 测试不再使用原先的任何脚本，改用
+`/home/huyang/data/trae_projects/video_metric` 中的 FVD 原样计算方式；把以前的 FVD 计算脚本
+与计算约束都删除，并把两个 `.git`（主仓库 + 知识库）同步到 GitHub。
+
+**结论**：
+
+1. **实现**：正式 FVD 只调用 `video_metric` 的
+   `calculate_fvd(videos1, videos2, device, method='styleganv', only_final=True)`。
+   逐字节副本落在 `third_party/video_metric/`（上游 `JunyaoHu/common_metrics_on_video_quality`）；
+   IO 壳 `tools/eval_video_metric_fvd.py` 只负责 test 固定清单、first24 连续帧、
+   256² 源几何、`[B,T,C,H,W]` 像素 `[0,1]` 张量与报告，不含任何指标数学；
+   `tools/eval_milestone.py` 生成后自动调用它。
+2. **数值不变（已核验）**：旧 `third_party/signvip/fvd.py` 与
+   `video_metric/fvd/styleganv/fvd.py` **SHA256 完全相同**
+   （`c9a1acbf…da37`），I3D 权重相同（`bec6519f…0a5e2`），数据层协议相同
+   （test 640 / first24 / 不补帧 / 256² → 上游 224²）。所以 E1 129.7493、E2 142.3202、
+   E4 130.8486 等历史 FVD 的**数值**在相同输入下不会被这次切换改变；本轮是
+   **实现治理与脚本清理**，不是口径变更（口径仍是官方 I3D-K400 400-d logits）。
+3. **删除（用户明确授权）**：`tools/eval_fvd.py`、`tools/eval_signvip_fvd.py`、
+   `third_party/signvip/`、`tools/redecode_fvd_frames.py`、`tools/fetch_i3d_weights.py`、
+   `tests/test_eval_fvd.py`、`tests/test_signvip_fvd.py`，以及 `tests/test_milestone_eval.py`
+   中两个旧 FVD 测试；旧 `FVD_SPEC_20261021.md` 及其中 SignViP 强制入口/SHA 锁定/
+   `--self-check≈131`/617-640 双 N 等约束全部作废；新唯一规范 = `.trae/documents/FVD_SPEC.md`。
+   历史 FVD 报告产物（`reports/eval/**/fvd*.json/npz/lock`、`fvd_command.json`、
+   `real_floor.json`、`reports/eval/fvd_ref/`）也按用户选择删除；生成帧/`ids.txt`/`protocol.json` 保留。
+4. **来源说明**：用户给的 `/home/huyang/data/trae_projects/video_metric` 在评测机上不存在
+   （`/home/huyang` 整个目录没有）；本轮从本机同源副本
+   `/home/hulala/gsw/SLP2025/VideoVAET/video_metric`（与 `VideoVQVAE` 下副本逐字节相同）
+   拷贝，全部 SHA256 记在 `FVD_SPEC.md` §3 与 `third_party/video_metric/PROVENANCE.md`。
+   若之后拿到用户路径下的副本，先按同一张表复核等价再替换。
+
+**后续影响**：E6 训完后的自动评测链会直接走新入口；新结果写入新的 `fvd.json`（含
+`protocol.upstream_sha256`）。旧台账数字保留作历史引用，不再当可复算证据。
+决策登记 TODO **D76**。
+
+### 新入口对已跑完臂的复算验证（2026-10-27）
+
+用新入口 `tools/eval_video_metric_fvd.py` 对三个已跑完臂的**既有生成帧**重算（不重新生成、
+不改任何帧），直接检验“切换不影响数值”：
+
+| 臂 | 旧入口（SignViP 壳，batch8/GPU） | 新入口（video_metric 原样，上游 bs=10） | Δ |
+|---|---:|---:|---:|
+| E1 | 129.7493 | **129.7520** | +0.0027（+0.002%） |
+| E2 | 142.3202 | **142.3279** | +0.0077（+0.005%） |
+| E4 | 130.8486 | **130.8517** | +0.0031（+0.002%） |
+| 真值半分 floor | 84.8970 | **84.8977** | +0.0007 |
+
+**结论**：差异 ≤0.008 FVD（≤0.006%），落在 batch 大小（旧入口 8 / 新入口走上游硬编码 10）
+与 GPU 浮点归约噪声的量级内；同一批帧、同一 400-d 特征空间、同一协议，三臂的相对排序与
+结论（E1 最好、E2 差约 9.7%、E4 与 E1 基本持平）全部不变。产物
+`reports/eval/m1_E{1,2,4}_video_metric_20261027/fvd.json`；台账 exp-113/114/115。
+
+
+**改用用户最终路径重跑（2026-10-27 晚）**：用户给出 `/home/wxy/video_metric` 后，入口改为直接读该目录、
+删除仓库内 `third_party/video_metric/` 副本（`VIDEO_METRIC_ROOT` 可覆盖），并重新锁定 SHA；
+三臂重跑 = **E1 129.7520 / E2 142.3279 / E4 130.8517**（floor 84.8977），与副本结果**逐位相同**。
+唯一差异是用户版 `calculate_fvd.py` 新增 `pad()`（<10 帧时用最后一帧补到 11 帧），
+first24 恒为 24 帧，`pad()` 为 no-op。产物
+`reports/eval/m1_E{1,2,4}_video_metric_user_src_20261027/fvd.json`；台账 exp-116。
 
 ## 2026-10-28 · E5（factor4=4a 全冻 mT5）训完与 FVD 口径切换的连带影响
 
