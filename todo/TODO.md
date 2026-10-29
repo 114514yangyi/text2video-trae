@@ -1399,3 +1399,29 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   产物 `reports/eval/m1_*_first52_videovaet_20261029/`，台账 `EXPERIMENT.md` exp-121/122/123，
   规范 `FVD_SPEC.md` §3/§7。本数据窗口分布：556/642（86.6%）用满 52 帧，最短 17 帧→T=16，
   0 条被跳过（用户提到的"77.8% / 7 条跳过"是 SignViP 那批数据的分布）。
+- **D82 · 双仓库同步 + 里程碑全臂改新口径重测（2026-10-30 用户指令）**：用户要求"同步两个仓库的
+  github 远程状态"、"以后所有评测链都改为新的评测"、"把跑过的所有 milestone 实验的评测都跑一遍"。
+  ① **同步结果**：代码仓库 `114514yangyi/text2video` 从 `8a295a1` fast-forward 到 **`d30429b`**
+  （`feat(fvd): vendor videovaet_fvd and make its 52-frame per-clip FVD official`，8 个提交，
+  **未触碰 `t2v/` 训练代码**，故 E9 训练不受影响）；知识库仓库 `text2video-trae` 从 `42619e6`
+  fast-forward 到 **`60ad987`**（含 `FVD_SPEC.md`、D81/D81 续、exp-121/122/123、slim 文档、frozen_checks）。
+  同步前把本机未提交的 E6/E9 旧编号台账（D77/exp-117，与远端 D77/exp-117 撞号）导出到
+  `/tmp/trae_local_E6E9_bookkeeping_backup_20261029.patch` 后丢弃，E9 改按本文件 D82 重新登记。
+  ② **SSH 修复**：两个仓库 `.git/config` 的 `core.sshCommand` 里写死的 `ProxyCommand
+  nc -X 5 -x 127.0.0.1:1080`（该端口本机无监听）导致 `fetch` 报
+  `kex_exchange_identification`；实测 **1080 / 7890 / 7891 三个代理端口从本机均不可用**
+  （7891 连接被 reset、7890 SOCKS 不通），**直连 `ssh.github.com:443` 正常**，故改成直连并删除
+  `ProxyCommand`。若用户侧代理恢复，再把 `-o ProxyCommand='nc -X 5 -x 127.0.0.1:7891 %h %p'` 加回即可。
+  ③ **全臂改新口径**：按 `AGENTS.md` 第 5 条与 `FVD_SPEC.md`，正式 FVD 一律 `videovaet_fvd`
+  （per-clip 均值，窗口 `min(52,源帧数)`，N=642）。本机有 `final.pt` 的臂 = **E1 / E2 / E4 / E6**，
+  需要**重新生成 52 帧**（旧 24 帧帧包按规范不得复用）；E9 训完由链自动跑同口径。
+  队列 `reports/queue/jobs_m1_first52_20261030.txt`（`gpu_queue --gpus 0,1,2,3 --max-parallel 2
+  --min-free-gib 16`，等卡空闲自动起；4 臂按 E1→E2→E4→E6 优先级），产物落
+  `reports/eval/m1_E{1,2,4,6}_first52_videovaet_20261030/`，台账 exp-124…127。
+  ④ **本机 642 清单**：`reports/eval/samples/m1_test_first52_ids.txt` 由 `data/phoenix_latents/v1/test.jsonl`
+  的 `video_id` 排序生成，SHA256 **`feb5565065977755…`**，与远端三臂（exp-121/122/123）逐位一致 → 可同表比较。
+  ⑤ **工具自检**：`videovaet-fvd verify`（manifest 7 文件逐字节一致）与 `selftest`（3 clip，
+  `fvd_mean=0.56995`）均通过；另用 CPU 3-clip `--floor-only` 冒烟（`/tmp/fvd_smoke`，floor 1644.02，
+  仅为管道连通性检查，不是正式数字），确认真值 N 帧视图 `data/phoenix_frames_first52/` 可增量补齐。
+  ⑥ **未覆盖**：E3/E5/E7 的 checkpoint 与帧包在另一台机器上（exp-121/122/123 已按新口径完成，
+  无需重跑）；E8 无 `final.pt`（规范 §7 已注明）；E9 训练中（2026-10-29 11:50 起，2×3090，world2×accum6）。
