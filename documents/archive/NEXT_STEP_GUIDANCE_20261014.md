@@ -85,7 +85,6 @@ FlashSign证明pose-free可以作为研究方向；Text2Sign却直接承认promp
 | S1 [FlashSign: Pose-Free Guidance for Efficient Sign Language Video Generation](https://arxiv.org/html/2603.27915v1)，arXiv，2026；[作者代码](https://github.com/AIGeeksGroup/FlashSign) | §II-B/C：文本、3D VAE、epsilon目标、时间步tile稀疏注意力。只借训练/推理注意力一致性审计；不搬其骨干 | 文本条件可；更换VAE/epsilon违反H1/H3；单帧单token无空间tile | CPU注意力/FLOPs分解可；若无空间冗余/时间注意力非主要成本，否决稀疏化投入 |
 | S2 [Text2Sign: A Single-GPU Diffusion Baseline for Text-to-Sign Language Video Generation](https://arxiv.org/abs/2607.13164)，arXiv，2026 | 摘要明确去文本只小幅改变留出去噪loss、错配prompt与正确近似；迁移correct/shuffled/empty同噪声诊断 | 诊断合规；原3D encoder-decoder不替换冻结VAE | 半天机制探针可，若正确条件优势不可分，否“只看loss就够”；不能据此否决全部长期训练 |
 | S3 [Towards End-to-End Text to Sign Language Video with Diffusion Models（TuneSL）](https://link.springer.com/chapter/10.1007/978-3-032-25314-9_16)，Springer，2026上线（ECML PKDD2024 workshop论文集） | 出版商摘要：重复输入图并DDIM inversion作结构引导；借其条件来源审计 | 新增图像引导违反H4，非本项目D7固有解码锚点；不移植 | 静态依赖检查即否整套迁移，无GPU；全文付费，未核验encoder更新细节 |
-| S4 [Advanced Sign Language Video Generation with Compressed and Quantized Multi-Condition Tokenization（SignViP）](https://arxiv.org/abs/2506.15980)，arXiv，2025 | 摘要含pose/3D hand经量化token再翻译；用于澄清“压缩token不等于无需pose” | 原版违反H4；不搬FSQ/tokenizer | 半天源码/数据依赖审计可否决整套；不启动训练 |
 | S5 [SignRefine: Adapting Foundational Video Models for Sign Language Generation](https://arxiv.org/abs/2609.08496)，arXiv，2026 | 摘要：keypoint条件、手脸空间adapters；是新增邻近工作，非FlashSign已确认后续 | 2D关键点监督/条件违反H4；单帧token无局部空间接口 | 依赖审计即可否；不因近期而复活pose |
 | S6 [SignMoD: Sign Language Video Generation via Mixture of Diffusion](https://doi.org/10.1109/TPAMI.2026.3698334)，IEEE TPAMI，2026（仅书目线索） | 题名/DOI检索找到；IEEE原页不可访问，未从满足本轮来源标准的原文核实机制。不得用SSM/MoE宣传解释作为结论 | 条件/监督未确认；**不能宣称合规** | 半天原文获取/依赖审计可作为后续信息任务；现在不能设计可信训练探针 |
 
@@ -248,7 +247,7 @@ python tools/probe_latent_retrieval.py   --run reports/eval/matrix/prefix60k/tes
 | 不做/继续parked | 原因与替代 |
 |---|---|
 | 改VAE、多token解码、pixel_refine、epsilon/v输出 | 硬约束与FAIL-001；只在现latent/x0上推导loss/采样等价换算 |
-| pose/gloss/关键点/光流/reference生成条件；外部视觉teacher训练 | SignViP/SignRefine/TuneSL及原版REPA边界；只借机制，不继承原方案监督 |
+| pose/gloss/关键点/光流/reference生成条件；外部视觉teacher训练 | SignRefine/TuneSL及原版REPA边界；只借机制，不继承原方案监督 |
 | 再做pad-only mask或再加同样cross-attn | FAIL-003/005；若014内容词诊断无独立贡献，合并回001，不偷换名复活 |
 | 继续扫旧语义λ | T D11与已有扫描；先005可靠性/015奖励漏洞 |
 | 硬按德语词序对齐整段/压到文本token数 | SPARRING R3、FAIL-004、Text CTC非单调证据；002只软局部 |

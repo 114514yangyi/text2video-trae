@@ -541,7 +541,7 @@ N9 `config_signature` 追写 `code`（git HEAD / dirty）、`deps`（torch/trans
 
 **用户决定**：文本编码器不再固定冻结，要基于预训练模型参与微调；VAE/latent/x0/text-only/SignMbart 约束继续适用。
 
-**检索结论**：FlashSign 是 pose-free RGB 视频路线，但实验为 WLASL 孤立词、长句仍受限，UmT5 是否更新未明确，作者仓库只有 README；TuneSL 是直接短视频生成（出版商摘要可读），推理有单帧 DDIM inversion 结构引导；2026 Text2Sign 是直接短 RGB 视频但语义 prompt 区分很弱。SignGen 实际融合 pose/flow/depth，SignViP 使用 pose/3D-hand token 中介，不能当作严格同条件基线。Text2SignDiff 输出 pose，句子级对比对齐只作为机制参考。SignMoD 全文未获取，仅列待核实线索。JiT 的可学习条件是类别 embedding，不是微调自然语言 encoder。
+**检索结论**：FlashSign 是 pose-free RGB 视频路线，但实验为 WLASL 孤立词、长句仍受限，UmT5 是否更新未明确，作者仓库只有 README；TuneSL 是直接短视频生成（出版商摘要可读），推理有单帧 DDIM inversion 结构引导；2026 Text2Sign 是直接短 RGB 视频但语义 prompt 区分很弱。SignGen 实际融合 pose/flow/depth，不能当作严格同条件基线。Text2SignDiff 输出 pose，句子级对比对齐只作为机制参考。SignMoD 全文未获取，仅列待核实线索。JiT 的可学习条件是类别 embedding，不是微调自然语言 encoder。
 
 **本地设计**：建议预训练 mT5-base 全量微调、独立较低 lr（初始 1e-5，对 DiT 1e-4），保存/恢复文本权重，动态重编码 CFG 空文本，dev/可视化同步 eval 模式，并以一致 raw 状态评测。已发现 no_grad、optimizer 参数集、全组 lr 覆盖、缺文本 checkpoint 与缓存空文本五处必须联动；不能只改 requires_grad。完整文献证据及有限改动设计见 `SIGN_VIDEO_LITERATURE_20261013.md`。
 
@@ -1391,128 +1391,7 @@ average-pool** + ImageNet 归一化（有效 112²），特征空间完全不同
 `RULES.md` 与 `AGENTS.md` 已改为"唯一主对比指标 = 官方 FVD、回译不再要求"。
 
 **口径提醒**：ΔFVD < 50 在论文经验里不足以断言感知差异；本表 132–185 只在本协议内可比，
-不要与 SignViP 的 1025（协议未写全）直接相减。
-
-## 2026-10-21 prefix60k 的 SignViP 对齐口径：24 帧 159.38、32 帧 239.90、全帧 221.82
-
-**做法**：按 SignViP 官方代码（`reports/eval/signvip_ref/`）对齐——I3D-K400 400-d logits、
-短边 224 + center crop、`(x−0.5)×2`；帧取法改成"从第 1 帧起连续 N 帧"或"全部帧"，
-分辨率先把帧 resize 到 SignViP 的 272×224（`--resize-hw 272 224`）。真值侧同样跳过条件帧 0。
-
-**结果**（test 642 单侧，prefix60k）：24 帧 **159.38**（本底 68.56）、32 帧 **239.90**
-（本底 84.20）、全帧 **221.82**（本底 60.34）；原 16 帧均匀口径为 178.48（本底 74.17）。
-
-**结论**：① 24/32 帧只看视频开头，数值低于全序列 16 帧，两套口径不可混表；② 32 帧 > 24 帧，
-后段漂移更严重；③ 全帧把整段做 I3D 时间平均，与固定窗口不是同一统计量，只能同口径比较；
-④ SignViP 的 1025.45 仍不可与本表直接相减（片段是否含条件帧、训练/推理协议不同）。
-
-**工程**：修掉 TorchScript profiling executor 在共享 GPU 上第二次 forward 报
-`CUDA error: out of memory` 的问题（`torch._C._jit_set_profiling_executor(False)` /
-`_jit_set_profiling_mode(False)`，自检与多次 forward 均正常）。
-
-## 2026-10-21 我们与 SignViP 的 FVD 实现逐位一致（同输入相对差 5×10⁻⁹）
-
-**做法**：从 SignViP 仓库取官方 `metrics/fvd/styleganv/fvd.py` 与 `calculate_fvd.py`，
-与本仓库 `tools/eval_fvd.py` 在**同一批 20 条 prefix60k 视频**上对算：32 帧、272×224、
-I3D-K400 400-d logits、`only_final=True`、同一份 `i3d_torchscript.pt` 权重
-（sha256 `bec6519f…a5e2`），预处理同为短边 224 + center crop + `(x−0.5)×2`。
-
-**结果**：SignViP 官方代码 **715.2227465**，我们的工具 **715.2227501**，
-绝对差 3.6×10⁻⁶、相对差 **5.1×10⁻⁹** —— 仅浮点求和顺序差异，实现等价。
-
-**含义**：我们的 FVD 与 SignViP 论文表格是同一度量，可以直接比较；残余差异只能来自
-模型/条件/帧数协议，不是指标实现。等价性脚本存 `reports/eval/signvip_ref/verify_equiv.py`。
-
-**工程备注**：官方 `calculate_fvd.py` 的 `load_i3d_pretrained` 用 `DataParallel` 会强制
-`cuda:0`；共享卡上还需先关闭 JIT profiling executor，否则第二次 forward 会报假 OOM。
-
-**全量复核（2026-10-21 22:14）**：用 SignViP 官方代码在 test 642 条、32 帧、272×224 上完整跑一遍
-（`reports/eval/signvip_ref/run_signvip_fvd_prefix60k.py`，chunk=16、bs=2），FVD = **239.9040**、
-real split-half 本底 83.94；我们工具同协议为 **239.9002**，差 0.0038（相对 1.6×10⁻⁵），
-差异只来自分批与浮点累加顺序。结论：prefix60k 的官方口径 FVD 就是 **≈239.9**。
-
-**SignViP 端到端复现（2026-10-22 00:42）**：用其官方发布权重在本机搭出完整 text→pose→video 链路
-（`tools/signvip/gen_rwth.py`：t2gpt 自回归生成 12 token/帧姿态码 → `VQConditionEncoder.preprocess` →
-`SignViPPipeline`，20 步、CFG 3.5、context 24/overlap 2、seed 42、参考帧 = 真值 frame 0、最多 32 帧），
-test 642 条全部生成（`reports/eval/signvip_gen_642/`：601 条 32 帧、中位数 32、7 条 < 10 帧）。
-用我们的官方口径工具评测（`--frame-mode contiguous --num-frames 32 --resize-hw 272 224`，即 SignViP
-`metrics/fvd/styleganv` 协议）：**FVD = 259.00**（num_videos 634，7 条 <10 帧被跳过），
-real split-half 本底 **86.31**，mean_feature_l2 35.72。
-对照论文（arXiv:2506.15980 Table 3，RWTH-2014T）：SignViP **1025.45**、SignGAN 1431.38、SignGen 1715.32；
-Table 4 扩散类 275.22–556.63。判读：**实现侧已证明一致**（同输入下官方代码 239.9040 vs 我们 239.9002，
-相对差 1.6×10⁻⁵），故 259 vs 1025 的差距不来自 FVD 代码；候选来源 = 论文评测子集/样本量
-（小 N 本底可达数百上千：我们 N=59 时本底 553）、条件来源（本机只能用文本→姿态，官方训练期验证用 GT 姿态）、
-或论文数字取自训练期小批量验证。定性检查：生成帧与真值像素差 43–48（非拷贝）、同文本同种子逐位一致、
-换文本平均差 0.17（文本条件有效）。
-**结论（更正为可证明的版本）：在 272×224、同一帧清单、同一预处理下，我们的 FVD 工具与 SignViP 官方
-`fvd.py` **逐元素一致**（`align_audit.py`：输入张量 max|Δ|=0、400-d 特征 max|Δ|=0、FVD 相同）；
-在 256×256 等其他几何下两者有可测但很小的差（输入 max|Δ|=0.0376、特征 cos=0.9998、FVD 差 0.53%）。
-论文 1025.45 在本机协议下复现不出（我们更低），差距主要来自样本量与协议，不是代码实现。**
-
-**SignViP 复现值与论文差 4 倍的原因：样本量偏差，不是实现/模型问题（2026-10-22 诊断）**：
-同一批 642 条生成帧、同一份真值特征，只变抽样子集大小：N=20 → **907.1**（本底 1488.1）、
-N=40 → 660.8（823.7）、N=80 → 457.0（469.1）、N=160 → 344.6（332.8）、N=320 → 284.6（163.9）、
-N=634 → **259.0**（86.3）；更旧的 prefix60k 同曲线（N=20 → 727.1、N=634 → 239.9）。
-一阶偏差模型 `F(N) ≈ 233 + 1.65×10⁴/N`。N=150 退化基线：生成 343.0、时间乱序 901.1、
-冻结首帧 1156.4、真值 test vs train 229.0 —— 论文 1025 在 N≈150 口径下相当于"画面冻结"，
-不像 SOTA 模型成绩。官方仓库唯一的 FVD 调用点 `train_stage2_multi_cond.py::log_valid`
-用 `batch_size=1`、`max_eval_batches=10`、GT pose、dev 集，即**≤10 条**；论文正文未写 FVD
-的 N/帧数/分辨率。结论：259 vs 1025 **口径不同，不可直接相减**；FVD 实现等价已另行证明
-（同输入 239.9040 vs 239.9002，相对差 1.6×10⁻⁵）。规则已写入 `FVD_SPEC_20261021.md` §3.2/§5.7。
-
-**样本量敏感性（2026-10-22；更正：不能据此断言论文 N=10）**：同一特征池把 N 扫到 10，得
-N=10 → **1005.16**、15 → 1005.00、20 → 969.00、25 → 867.22、30 → 790.15、40 → 656.46、
-60 → 531.32。论文 1025.45 与 N≈10 的量级相容（差约 2%），但论文正文未公开 FVD 的 N/帧数/分辨率；
-仓库唯一的 FVD 调用点 `train_stage2_multi_cond.py::log_valid`（`batch_size=1`、`max_eval_batches=10`、
-GT pose、dev 集）只能证明**训练期验证至多 10 条**，不等于论文表格的评测协议。因此正确表述是：
-小 N 会把 FVD 抬到 ~1000 量级，259（N=634）与 1025.45 **口径不同、不可直接相减**；
-"论文数字来自 N=10" 只是与证据相容的假设，不是已证明的事实。
-
-**SignViP 复现集 24 帧 / 256×256 官方口径（2026-10-22）**：用 SignViP 官方 `fvd.py` 代码
-（`get_fvd_feats` + `frechet_distance(feats_fake, feats_real)`）对 `reports/eval/signvip_gen_642`
-全测试集评测：**FVD = 196.76**（N=613，24 帧连续、先 resize 到 256×256、再短边 224+crop、400-d logits），
-真值 split-half 本底 88.31；同协议本仓库工具 194.19（N=635，含 16–23 帧短片），差 1.3%。
-对照：32f/272×224 本仓库工具为 259.00（N=634）。脚本 `reports/eval/signvip_ref/run_signvip_fvd_generic.py`。
-
-**GT-pose 条件近似复现（2026-10-22）**：论文 Table 4 的 GT-pose 设定（Sign Video Diffusion
-Model 275.22）在本机做近似复现：条件 = RefSign DWPose 134 关键点经 SignViP `draw_pose`
-渲染的 272×224 骨架 + 2D 手部关键点（**无 HAMER 3D 手部 mesh**，这是近似点）；dense
-`sk_images`/`hamer_images` 直接进 `SignViPPipeline`（与官方训练验证同一通路）。642 条
-生成视频，contiguous 32 帧、272×224、I3D-400 logits → **FVD = 158.86**（N=642，本底 84.20，
-mean_l2 25.33；按官方真值窗口帧 0..T-1 重算为 **156.27**，N=642）。对照：文本→姿态→视频
-259.00（N=634）；GT 条件使 FVD 降约 100，方向正确。**不可与论文 275.22 直接比较**：手部条件是
-2D 关键点而非 HAMER 3D mesh、生成最多 32 帧（官方验证 32 帧窗口）、N 与协议未公开。产物
-`reports/eval/matrix/signvip_gtpose/test_n642/fvd_i3d400.json`，脚本
-`tools/signvip/gen_rwth_gtpose.py`，规范 `FVD_SPEC_20261021.md` §3.3。
-
-**审计回合：FVD 协议对齐实验（2026-10-22）**：按审计意见逐项做了可证伪实验。
-① **预处理实现**：`tools/eval_fvd.py` 新增 `--preprocess {pil_aa,signvip_tensor}`；`signvip_tensor` 复刻
-SignViP `preprocess_single`（张量双线性、无抗锯齿）。`align_audit.py`（20 条 × 32 帧）显示
-272×224 下两条路径的输入张量、400-d 特征、FVD 完全相同（max|Δ|=0）；256×256 下输入 max|Δ|=0.0376、
-特征 cos=0.9998、FVD 差 0.53%（1072.23 vs 1077.86）。
-② **帧 0 对齐**：从官方数据集代码取到直接证据——`signdatasets/sign_lang_video.py:255-260` 验证集
-`random_sample=False, start_idx=0`，`batch_ids = linspace(0, clip_len-1, num_frames)`，即真值窗口是
-**帧 0..T-1**（不是 1..T）；`ref_frame` 是同一视频随机帧（`:352`）。工具新增 `--include-frame0`。
-重算：文本→姿态 32f/272×224 **259.92**（N=635，旧跳过帧 0 为 259.00，+0.35%）；GT-pose 近似
-32f/272×224 **156.27**（N=642，旧 158.86，−1.63%）。帧 0 偏移是 ~1% 量级，不是 4 倍差距来源。
-③ **32 帧截断**：同一 20 条文本→姿态样本，max_frames=32 vs 48 生成后都取前 32 帧评测：
-844.50 vs 857.09（+1.49%，N=20，含采样 RNG 漂移，属上界）——截断效应 ~1.5%，不是 4 倍来源。
-④ 因此 259 vs 1025.45 的差距**不能**归因于预处理、帧 0 偏移或 32 帧截断（三项合计 <3%）；
-主因仍是样本量/协议未公开（见上条样本量敏感性）。**更正此前"在 N=10 上两者一致"的说法**：
-那只是同量级相容，不是同协议等价。
-
-**官方代码含帧 0 复核（2026-10-22）**：`reports/eval/signvip_ref/run_signvip_fvd_generic.py` 加
-`INCLUDE_FRAME0=1`（真值取 `images0001..images00NN`，即源帧 0..T-1），24 帧 / 256×256 / 官方 fvd.py：
-**FVD = 197.55**（N=613，本底 88.20）；帧 1 口径为 196.76（本底 88.31）。差 +0.4%，再次说明帧 0
-对齐只影响 ~1% 量级。日志 `reports/eval/logs/signvip_official_gen642_24f_256_f0.json`。
-
-## 2026-10-23 D57 · SignViP 50步完整生成重跑已完成
-
-2026-10-22 22:37:36（Asia/Shanghai）生成642/642及评测完成，所有进程退出0；代码2319729，产物 `reports/eval/signvip_paper_repro_20261022_v2`。原始210×260官方test与字幕、DDIM50/CFG3.5、完整EOS长度、context24/overlap2、fp16、参考帧0、官方视频编码及styleganv FVD函数。
-
-预声明四协议：前32帧短片末帧补齐 N642 **290.291187**；严格足32帧子集 N597 **308.710916**；全视频均匀16帧 N642 **73.669359**；GT起点后移1帧 N642 **289.375657**。生成短片35、真实短片17、合并45；严格子集差异包含换样本效应，不能全归因补帧。台账新增exp-100至103。
-
-10-23只读核验：五组特征均[642,400]、float64、有限；ID唯一且顺序匹配manifest；清单和代码SHA吻合。基于既有特征用独立对称PSD特征值公式重算四项，与JSON误差小于1e-8。论文Table3 **1025.45未复现**，不证明本机模型更强。论文完整FVD片段/样本/短片策略和最终发布权重版本对应关系尚未确认；不得推断论文N=10，也不得将小样本碰巧接近当成复现成功。
+不要与协议未写全的其它已发表数字直接相减。
 
 ## 2026-10-22 · 目标机 conda 环境验证
 
@@ -1528,14 +1407,103 @@ SignViP `preprocess_single`（张量双线性、无抗锯齿）。`align_audit.p
 
 口径注意：① E1 base 的 30k 在 `/home/wxy` 主机上跑（`MILESTONE1_E1_LAUNCH*.json` 记录），本机无同口径 FVD，**不得**把 E7 与本机旧口径数字（R(2+1)D-18 / 240 prompts 等）横比；② 本 run 为 4090+2×3090 混卡，E1 为 3×3090，对照表须标卡型差异；③ 评测期间 `/data` 只剩 5.9 GiB，已删除与 `final.pt` 同为 step30000 的 `runs/m1_E7/last.pt`（12.3 GB）腾空间，`final.pt` 保留可复现（如需 resume 点，可由 `final.pt` 复制恢复）。
 
-## 2026-10-24 D67 · 强制SignViP原样FVD后E7重测与匹配对照
+## 2026-10-26 exp-112 · E3（factor2=2c）首测：141.83，train loss 不能当 FVD 代理
 
-用户要求正式FVD直接用SignViP源码。本轮把原始`metrics/fvd/styleganv/fvd.py`逐字保存到`third_party/signvip/fvd.py`（SHAc9a1acbf...fda37），入口`tools/eval_signvip_fvd.py`只负责IO/first24人口/统一源几何，预处理/特征提取/距离均调用原函数；权重SHA bec6519f...a5e2。`eval_milestone.py`和旧`eval_fvd.py`CLI统一走新入口。代码a7756ed，分支codex/signvip-first24-fvd-20261024。95项目测试通过，19项相关测试通过；官方常量视频自检133.6239。第三方源自身含一行尾空格，为保持逐字一致未改。
+E3（`configs/milestone1/E3.yaml`，layer_plan `[text,text,text,ref+text]×7`）3 卡 from scratch 30k 于
+2026-10-25 13:12 → 10-26 16:33 完成（27 h 14 m，均 3.27 s/步，峰值 16.61 GiB，final.pt 13.68 GiB），
+评测链路 `runs/m1_E3_chain.sh` 于 16:33:32 接上 `final.pt`，17:21 出分。
 
-既有E7 raw PNG首24、GT首24均256方形；新评测无抗锯齿（官方函数）、224中心裁剪。E7全640 **126.84746316**，真值半分84.88998481；旧本地实现124.07329367保留为历史值，当前正式SignViP实现以126.84746316为准。
+- **FVD 141.83068105122402**（N=640，ids SHA 6f96ad9dda2721b877dea1f08dab7bbf17bb4c6bcb9d90becb665824a69110f6，真值半分 84.89579678321768，相对本底 +67.1%）。
+- 同机同口径对照只有 E7（factor1=1b）**126.84746316**：E3 高 14.98（+11.8%）。
+- **可复用观测**：E3 末 200 步 train/loss 0.01718，低于 E7 的 0.0166 区间（5k 0.0506 → 30k 0.0179），
+  但 FVD 反而差 15。⇒ 在本配方族里 train/loss 与 I3D-FVD **不同向**，调参/选点不能只看训练损失。
+- 局限：E3 与 E7 在 factor1+factor2 上同时不同，2c 的单独贡献无法拆出；E1 base 官方 FVD 仍缺。
+  裁决与复活条件见 `FAIL.md` FAIL-048；台账 `EXPERIMENT.md` exp-112。
 
-完整SignViP发布权重生成中有23条在E7清单内但不足24帧，不补帧，匹配交集617。两者用同GT、相同617ID、先256方形（SignViP输出由272×224转为256方形；E7/GT原本256方形不改变）、同官方预处理、同I3D和统计：**E7 128.47619769 vs SignViP 218.50745041**，共同真值半分89.08661494。之前无这一整套完全匹配的结果；旧613条24帧结果不是本轮对照。
+## 2026-10-28 · E5（factor4=4a 全冻 mT5）训完与 FVD 口径切换的连带影响
 
-评测条件统一，不代表生成配方统一：E7 DDIM50/CFG2.0/GT长度/raw/PNG；SignViP DDIM50/CFG3.5/文本预测长度/官方MP4，参考首帧均有。故只报告此共享FVD协议下的实测，不能宣称论文1025.45已复现或所有生成变量完全受控。
+- **E5 训练**（`configs/milestone1/E5.yaml`，world3、effective batch12、seed42，30k）：
+  2026-10-28 05:09 完成，`final.pt` 13,491,286,618 B。**峰值显存 13.56 GiB，比 E3 的 16.61 GiB 低 3.05 GiB**；
+  检查点比 E3 小 ~1.2 GB（14.69 GB → 13.49 GB）——两者都来自同一个机制：文本编码器 `trainable=false` 后
+  既不存它的梯度/Adam 状态，也不为它开 gradient checkpointing。**这是 4a 的确定性工程收益，与 FVD 无关**。
+- **E5 FVD（新口径）**：`video_metric.calculate_fvd(method='styleganv', only_final=True)` 下
+  **128.53482126748224**，`real_split_half_fvd` = 84.89589457762295，N=640，ids SHA `6f96ad9dda27…`。
+- **口径污染的坑**：E3（141.83068105122402）与 E7（126.84746316）是 **2026-10-27 之前**那套已被删除的
+  旧副本实现算出来的，**与 video_metric 数字不可直接相减**；任何「E5 比 E7 差 1.7」这类结论现在都无效。
+  要比较必须把 E3/E7 的归档帧用新入口重算（登记 TODO **D79**）。
+- **判活教训（可复用）**：用 `pgrep -f "python -m ..."` 判断某个作业是否在跑时，**模式字符串本身会出现在调用者
+  的 `bash -c` 命令行里**，于是 pgrep 永远返回自己 → 守护脚本以为作业还活着、从不重启。判活应读作业自己写的
+  心跳（本项目是 `runs/<run>/status.json` 的 `last_update_unix`，超 420 s 未更新即判死）。
+- **共享盘存档**：`t2v/train.py:180-182` 在每次写检查点前要求 `/data` 空闲 ≥ 参数字节×5（E5 为 16.5 GiB）。
+  在共享盘上这不是形式要求——E5 因此中止两次（18k、20k），都靠 `last.pt` 无损续训。长跑前应留 ≥30 GiB 余量。
 
-原始结果`reports/eval/m1_E7_signvip_first24_20261024/fvd.json`，全部特征/ID保存在同名npz，command/comparison_setup/code_version记录可追溯。已复读这些特征重新调用官方距离函数、核对640及617唯一ID与mask顺序、源码及wrapper SHA，一致。未训练、未重新生成、未删除旧产物。
+## 2026-10-29 正式 FVD 换成 videovaet_fvd；里程碑 E3/E5/E7 同口径重算
+
+**用户指令（TODO D81）**：以后测试 FVD 一律用 `/data/huyang/SignVIP/videovaet_fvd` 的配置与方式；
+把已跑出来的 milestone 实验都测一遍；把旧的测试方式删除清理。
+
+**结论**：
+
+1. **口径**：VideoVAET `seq_scriptsT.seq_eval` 口径 = 逐 clip `calculate_fvd(method='videogpt',
+   only_final=True)`（N=1，只取 logits 均值项）+ `np.mean`。变换
+   `Compose([Resize(224), ToTensor(), FixedSample(52)])`，即 **stretch 224²（LANCZOS4）、不 crop**。
+   实现挂在用户包上，本仓库只留 IO 入口 `tools/eval_videovaet_fvd.py`。规范 `FVD_SPEC.md`。
+2. **它是 per-clip 均值，不是 pooled Fréchet**：同一批 SignViP 特征下 per-clip 1067.68 / pooled 191.41。
+   所以旧数字（R(2+1)D 22–26、16 帧 132–185、styleganv 128–142）**没有一个能和新数字相减**，
+   连方向都不能直接沿用。
+3. **数据层没变**：真值 `images0001..0024`（frame0 参与）↔ 生成 `images0000..0023`，640 条同一清单，
+   24 帧两边等长；真值靠 `data/phoenix_frames_first24` 的 symlink 视图裁剪（像素文件不动）。
+4. **三臂实测（N=640，同清单同代码）**：
+
+   | 臂 | fvd_mean | median | std | floor（真值互配） |
+   |---|---:|---:|---:|---:|
+   | E3（2c） | **1107.53** | 1011.97 | 477.16 | 1625.28 |
+   | E7（1b） | **1112.43** | 999.66 | 494.04 | 1625.28 |
+   | E5（4a） | **1117.90** | 1007.82 | 511.22 | 1625.20 |
+
+   三臂差 ≤0.94%，**低于单 seed 可分辨的范围**；都比"两条互不相关真值"(1625) 低约 32%，
+   说明生成结果确实贴近自己的真值，但三者在内容层面**无法区分**。E8 无 `final.pt`，未参与。
+5. **跨卡浮点差异**：同一 20 条子集 4090 `1004.2757` / 3090 `1004.2304`（相对差 4.5e-5）。
+   GPU 型号不同会让第 4–5 位有效数字变化，比较时应尽量同卡；本表 E5 在 4090、E3/E7 在 3090，
+   差异量级远小于臂间差。
+6. **清理**：删除 `tools/eval_video_metric_fvd.py` 与 `tests/test_video_metric_fvd.py`（旧 styleganv 入口），
+   新增 `tests/test_videovaet_fvd.py`；`eval_milestone.py` 改调新入口并写 `fvd_videovaet.json`；
+   `models/i3d/i3d_torchscript.pt`（旧本地 I3D 备份，51 MB，无引用）一并删除。
+   旧报告 JSON 保留作历史（`reports/eval/m1_*_first24_2026*`），但**数字已作废**。
+7. **自检**：`videovaet-fvd verify` → manifest OK（7 文件）、无绝对路径字面量；
+   `selftest`（CPU）→ `fvd_mean = 0.5691307187080383`（包内记录 0.5694066286087036，
+   差异来自不同 OpenCV mp4 编码器，3e-4 量级）。
+
+## 2026-10-29（续）52 帧口径落地：里程碑三臂重新生成并评分
+
+**用户指令**：按包的上限 52 帧来测——用满 52 帧的片段占多数，短片段受自身长度限制（48/44/…/12），
+真值侧跟着截到同样长度，采样后不足 10 帧的由包的 assert/跳过规则处理。
+
+**结论**：
+
+1. **口径**：每条窗口 `N = min(52, 源帧数)`；生成侧 `images0000..N-1`（frame0 参考帧参与），
+   真值侧同 N 帧 symlink 视图（`data/phoenix_frames_first52/`），两侧再走 `FixedSample(52)`
+   （N≤52 时要么恒等，要么两侧同样向下取整到 4 的倍数，T 恒相等）。
+   清单从 640 扩到**全部 642 条 test 源**（`reports/eval/samples/m1_test_first52_ids.txt`，
+   ids SHA `feb5565065977755…`）。
+2. **本数据的窗口分布**（与用户给的 SignViP 例子不同，这里实测）：源帧 min 17 / p10 45 /
+   median 99 / p90 155 / max 242；**556 条（86.6%）用满 52 帧**，其余 48(6)/44(5)/40(3)…
+   **没有一条落到 T<10**，所以 `skipped = 0`（用户说的"7 条被跳过"发生在 SignViP 那批数据上，
+   不是本仓库的 642 条）。
+3. **三臂（N=642，重新生成，不是复用 24 帧帧包）**：
+
+   | 臂 | fvd_mean | median | std | floor |
+   |---|---:|---:|---:|---:|
+   | E5（4a） | **969.43** | 888.78 | 395.36 | 1503.97 |
+   | E3（2c） | **985.06** | 930.90 | 383.74 | 1503.97 |
+   | E7（1b） | **993.37** | 920.81 | 388.89 | 1503.84 |
+
+   排序 E5 < E3 < E7，两两差 1.6% / 0.8% / 2.4%，比 24 帧口径（≤0.94%）分得更开，
+   但**仍是单 seed**，只能算"同量级内略优"，不能据此宣称 4a 明确胜出。
+4. **24 帧 vs 52 帧**：同一批 checkpoint，窗口从 24 加到 52 后 `fvd_mean` 整体下降
+   ~12%（1107→985 等），本底从 ≈1625 降到 ≈1504；**两套数字不可混表**，52 帧是现行口径。
+5. **跨卡**：E7 在 3090、E3/E5 在 4090；floor 1503.84 vs 1503.97（相对 9e-5），
+   属设备浮点差异，折算到 `fvd_mean` 约 ±0.1。
+6. **产物**：`reports/eval/m1_{E3,E5,E7}_first52_videovaet_20261029/`（含 `frames/`、`ids.txt`、
+   `protocol.json`、`fvd_videovaet.json`）；日志 `log_eval_*_first52.log`。
+   每臂磁盘约 3.3 GB（642×52 帧 PNG）。

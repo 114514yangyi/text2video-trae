@@ -1121,7 +1121,7 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   logits**、16 帧、短边 resize 224 + center crop 224、像素 [-1,1]、float64 Fréchet；
   旧实现用 torchvision R(2+1)D-18 的 512 维 average-pool + ImageNet 归一化（有效 112²），
   换骨干=换特征空间，数字不可比、整体作废。文献手语域（PHOENIX14T）FVD 为几百
-  （SignViP 1025.45 / SignGAN 1431.38 / SignGen 1715.32；FlashSign 453–597）。
+  （已发表工作 1025–1715 量级；FlashSign 453–597）。
   **落地**：① 重写 `tools/eval_fvd.py`（400-d logits，`--self-check` 实测 133.91 ≈ 官方 131，
   报告写 `protocol` 与 `real_split_half_fvd`）；② 新增 `tools/fetch_i3d_weights.py`
   （hf-mirror，sha256 `bec6519f…a5e2`）与 `tools/redecode_fvd_frames.py`（从 `latents.pt`
@@ -1137,15 +1137,6 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   `fvd_i3d400.json`（旧 `fvd.json` 标 `⚠️R(2+1)D`）；旧 R(2+1)D 数字只留追溯。
   **后续（不阻塞本任务）**：GPU 恢复后抽一条臂用 CUDA 复跑，确认 CPU/CUDA 数值一致；
   全量 642×4 的 CPU 复现脚本与耗时已写进 `FVD_SPEC_20261021.md` 第 6–7 节。
-
-- **D56 · SignViP 端到端复现与 FVD 脚本正确性（2026-10-22）**：
-  用户 m01447/m01638 要求用 SignViP 官方权重跑测试集、看 FVD 是否与论文一致，以验证我们脚本。
-  已做：①官方代码 vs 我们工具同输入等价（239.9040 vs 239.9002，相对差 1.6e-5）；
-  ②本机搭出 text→pose→video 全链（`tools/signvip/gen_rwth.py`），test 642 全生成；
-  ③官方协议（32 帧、272×224、I3D-400 logits）FVD = **259.00**（N=634，本底 86.31）。
-  结论：**脚本正确性已证**；论文 1025.45 **未复现**（我们低约 4×），差距不在 FVD 代码，
-  候选原因 = 论文评测子集/样本量、条件来源（GT pose vs 生成 pose）或训练期小批量验证。
-  后续：①需向作者确认论文 FVD 的样本量与条件；②`tools/eval_fvd.py` 新增 `--min-frames`（默认 10）已随代码提交。
 
 ## 历史条目（已完成，仅留指针，不删）
 
@@ -1174,7 +1165,6 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   故若指标不涨只能记「合并臂无增益」。`wan_flow_lora_v1{,_raw}` 因 mask bug 作废（见 NOTES 2026-10-20）。
   **状态（2026-10-20 11:45）**：链式流水线已起（`tools/run_stage2_chain.sh`），当前在跑 Wan VAE 编码（eval 全量 + train 每 8 条取 1），随后自动训桥、起 20k 训练、挂评测看守；`EXPERIMENT.md` 已预填 exp-090（进行中）。
 
-- **D57 · SignViP 论文条件重新复现（2026-10-22 用户授权）**：使用原始 210×260 官方 test642 数据和字幕，50步/CFG3.5、完整EOS长度、官方视频编解码与FVD函数；独立产物 `reports/eval/signvip_paper_repro_20261022_v2`。主报告固定32帧、短片末帧补齐全642，同时预先声明严格32帧子集、全视频均匀16帧及GT首帧偏移敏感性；未知论文窗口/N不作推断，不通过改变N匹配1025.45。分支 `codex/signvip-paper-repro-20261022`，实现提交 `2319729`。已完成原始642条视频准备与首例冒烟（24帧/18.5s）；GPU1/4两分片全量生成已启动，supervisor PID3970442；**已完成**：2026-10-22 22:37生成642/642及评测退出0。前32补齐FVD290.291187(N642)、严格32为308.710916(N597)、uniform16为73.669359(N642)、GT偏移1为289.375657(N642)。论文1025.45未复现；结论/证据见NOTES 2026-10-23 D57及exp-100至103；完整论文协议待作者确认。
 
 ---
 
@@ -1187,7 +1177,7 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
 - **D58 · 里程碑1 立项与代码清场（2026-10-22 用户指令）**：backbone 换 PixArt-α、x-prediction、
   c 只留 timestep、官方 FVD 24 帧口径；10 臂矩阵 = E1(base=1a+4c+2a+3b+5b) / E2(2b) / E3(2c) /
   E4(3a) / E5(4a) / E6(4b) / E7(1b) / E8(1c) / E9(1c+3a) / E10(5a)。分支已建，代码已清场
-  208→45 个跟踪文件（提交 `44b874c` 移植官方 FVD 链、`88945f0` 删除旧架构/探针/Wan/SignViP）。
+  208→45 个跟踪文件（提交 `44b874c` 移植官方 FVD 链、`88945f0` 删除旧架构/探针/Wan）。
   **本轮只出规格与清场，不实现、不训练。**
 
 - **D59 · 里程碑1 四项设计裁决（2026-10-22 用户第二轮）**：
@@ -1201,7 +1191,7 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
 - **D60 · 里程碑1 第二轮裁决 + Q5 改判（2026-10-22）**：
   **Q5 改判**：24 帧口径从"均匀抽取"改为**从头抽取**（取 frame 0→23，`--frame-mode contiguous
   --num-frames 24`）；不足 24 帧的样本跳过，**有效 N ≈613**，id 清单落盘且 10 臂共用，报表写有效 N；
-  不要沿用 `--resize-hw 272 224`（旧 SignViP 预处理），缩放保持官方 224。
+  不要沿用 `--resize-hw 272 224`（旧预处理），缩放保持官方 224。
   **Q3 → mT5 768→骨架宽度的投影可训练**（Linear+LN，10 臂共有）；
   **Q7 → 4c 的"前 3 层"含 embedding**（训练 embedding + layer[0:3]）；
   **Q8 → 骨架用 PixArt-α 原尺寸 28 层 / 1152 宽 / 16 head**；
@@ -1259,11 +1249,45 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   实测 step1 loss 0.90315、step20 loss 0.69588、~3.77s/步、峰值16.59 GiB。配方改动提交 `97b9e9c`（README/base.yaml/十臂测试，训练代码不变），README 与实施计划已同步。
 
 
-- **D62 · 完整训练迁移包（2026-10-22 用户授权）**：保留全部项目代码/.git/.trae、冻结VAE项目代码和匹配psnr-best权重、离线mT5 PyTorch权重、完整v1缓存/文本/统计、当前PHOENIX train/dev/test帧。迁移入口在内存重定位路径，不修改冻结契约和源缓存；不打包历史runs/reports、Wan/SignViP大模型。打包产物 `/var/tmp/text2video_migration_20261022.zip`，包内 `migration/README.md` 记录安装和验证范围；源现存帧抽查256×256。对应F-015；目标机新环境安装/GPU训练仍需迁移后实测。
+- **D62 · 完整训练迁移包（2026-10-22 用户授权）**：保留全部项目代码/.git/.trae、冻结VAE项目代码和匹配psnr-best权重、离线mT5 PyTorch权重、完整v1缓存/文本/统计、当前PHOENIX train/dev/test帧。迁移入口在内存重定位路径，不修改冻结契约和源缓存；不打包历史runs/reports、Wan 大模型。打包产物 `/var/tmp/text2video_migration_20261022.zip`，包内 `migration/README.md` 记录安装和验证范围；源现存帧抽查256×256。对应F-015；目标机新环境安装/GPU训练仍需迁移后实测。
 
 - **D63 · 目标机训练环境配置与验证（2026-10-22 用户授权）**：已新建 conda `text2video`（Python3.12.15、torch2.6.0+cu124），安装迁移依赖和pytest。pip check通过；四张RTX3090 CUDA/bf16、真实缓存/mT5/DiT前向及冻结VAE单帧解码通过；128测试通过、9项Wan缺权重跳过；I3D自检133.91。实际可运行的是迁移DiT入口，PixArt里程碑未实现；未启动训练。环境与启动说明见 `ENVIRONMENT_SETUP_20261022.md`，包版本见 `ENVIRONMENT_PACKAGES_20261022.txt`。
 
+- **D68 · 双仓库同步发布与FVD规则固化（2026-10-24用户授权）**：主项目text2video与独立知识库text2video-trae分别提交、拉取、合并并推送各自main；该 FVD 实现的原样源码/入口/测试随主项目发布，AGENTS/README及知识库RULES/FVD_SPEC明确以后强制此实现。权重、runs/reports和嵌套.git不并入主仓库；保留全部历史结果。
 
-- **D67 · FVD强制SignViP原样实现及E7重测（2026-10-24用户指令）**：本轮执行只读旧产物；源码固定third_party/signvip/fvd.py，所有正式CLI改走tools/eval_signvip_fvd.py，E7原640重测并与完整SignViP生成在共同617条first24/256方形/同GT/无补帧下比较。只重测已有视频，不训练、不重新生成。新结果目录reports/eval/m1_E7_signvip_first24_20261024，旧报告保留。规则备份/tmp/text2video-fvd-policy-backup-20261024，分支codex/signvip-first24-fvd-20261024。**已完成**：提交a7756ed；95测试通过；E7全640新FVD126.84746316，共同617的E7=128.47619769、SignViP=218.50745041；见NOTES D67及新台账行。
+- **D79 · 用 video_metric 口径重算 E3 / E7，恢复同口径可比（2026-10-28 登记）**：（**已被 D81 取代**：2026-10-29 用户把正式 FVD 换成 `videovaet_fvd`，本条的 video_metric 口径连同其数字一起作废；E3/E7/E5 已用新口径在 2026-10-29 重算，见 D81 与 `EXPERIMENT.md` 2026-10-29 行）2026-10-27 用户把正式 FVD 换成 `video_metric.calculate_fvd` 原样实现后，E5 是**第一个新口径数字**（128.53482126748224）；E3（141.83068105122402）与 E7（126.84746316）是已删除的旧副本口径，**不可与新口径相减**。E3/E7 的 640×24 帧仍归档在 `/home/huyang/t2v_eval_frames_archive/{m1_E3_first24_20261025_frames,m1_E7_first24_20261024_frames}`，可用 `tools/eval_video_metric_fwd.py --generated <帧目录>` 只重算特征与距离（不重新生成、约十几分钟/臂）。判据：同一 ids 清单、同 `method=styleganv/only_final=True`；完成后把三臂放进同一张表再裁决 4a/2c/1b。
+- **D77 · 本机 FVD 源目录改用 `/home/huyang/data/trae_projects/video_metric`（2026-10-27 用户指令）**：用户要求本机计算 FVD 只使用该副本。`/home/wxy/video_metric` 在本机不存在；实测两份副本 8 个源码文件 + `fvd/styleganv/i3d_torchscript.pt`（`bec6519f…0a5e2`）SHA256 与 `tools/eval_video_metric_fvd.py` 的 pin **全部一致**。改法：`DEFAULT_SOURCE_ROOT` → 候选列表 `DEFAULT_SOURCE_ROOTS = (/home/wxy/video_metric, /home/huyang/data/trae_projects/video_metric)`，`source_root()` 取首个存在的目录，`VIDEO_METRIC_ROOT` 仍最优先；`tests/test_video_metric_fvd.py` 用同一候选表（两份字节相同，数值不变，训练机上行为不变）。实测（`signvip` env，CPU）：解析到本机副本、`verify_source()` 通过、`calculate_fvd(x,x) = -3.39e-05`、`calculate_fvd(x,y) = 74.31`，耗时 15.7 s。**未跑 pytest**：本机没有 `text2video` conda 环境（`/data/huyang/miniconda/envs` 里只有 signvip/taming/vae 等），`python3` 也无 pytest。
 
-- **D68 · 双仓库同步发布与FVD规则固化（2026-10-24用户授权）**：主项目text2video与独立知识库text2video-trae分别提交、拉取、合并并推送各自main；SignViP原样源码/入口/测试随主项目发布，AGENTS/README及知识库RULES/FVD_SPEC明确以后强制此实现。权重、runs/reports和嵌套.git不并入主仓库；保留全部历史结果。
+
+- **D80 · E8 训练排队启动（2026-10-28 用户指令「你现在跑 E8」）**：E8 = `factor1: 1c` + `conditioning.injection: both`（`configs/milestone1/E8.yaml`），与 E5 同配方 30000 步、effective batch 12（micro1×accum4）、3 卡 DDP。启动器 `runs/m1_E8_launch.sh`：轮询等「3 张卡各空 ≥18 GiB」再 `torchrun --nproc_per_node=3 -m t2v.train --config configs/milestone1/E8.yaml --out-dir runs/m1_E8`（配置里的 `/data1` 路径在本机不存在，必须用 `--out-dir` 覆盖），秒退 OOM 则阈值 +1 GiB 重试最多 3 次；日志 `runs/m1_E8.launch.log` / `runs/m1_E8.console.log`。评测链 `runs/m1_E8_chain.sh`：等 `runs/m1_E8/final.pt` → `tools/eval_milestone.py` → `reports/eval/m1_E8_first24_20261028`（`eval_milestone` 内部固定调 `tools/eval_video_metric_fvd.py`，即新口径）。**布置时（2026-10-28 10:35）8 张 4090 均被他人作业占用，最大空闲约 12.5 GiB，故当前处于排队态**；启动器与评测链均已 nohup 常驻。（**2026-10-29：评测口径已被 D81 取代；E8 训练未产出 `final.pt`，于 10-28 20:34 判死，产物归档 `runs/m1_E8_step1_oom_20261028/`**）
+
+- **D81 · 正式 FVD 换成 `videovaet_fvd`，并重算里程碑全部已完成实验（2026-10-29 用户指令）**：
+  用户要求「以后测试 FVD 都使用 `/data/huyang/SignVIP/videovaet_fvd` 的配置和方式」，并把已跑出的
+  milestone 实验都测一遍，同时删除旧的 FVD 测试方式。**口径**（规范唯一来源
+  `.trae/documents/FVD_SPEC.md`）：VideoVAET `seq_scriptsT.seq_eval` 口径——逐 clip
+  `calculate_fvd(method='videogpt', only_final=True)`，变换 `Compose([Resize(224), ToTensor(),
+  FixedSample(52)])`（stretch 224² LANCZOS4、不加 crop），聚合 `np.mean(per-clip FVD)`；
+  **不是 pooled Fréchet**（同一批特征 per-clip 1067.68 vs pooled 191.41，不可换算）。
+  **数据层不变**：test 单侧、固定 640 条清单、真值 `images0001..0024`（frame0 参与）↔ 生成
+  `images0000..0023`；真值经 `data/phoenix_frames_first24/` 的 24 帧 symlink 视图送入，
+  `FixedSample(52)` 对 24 帧恒等，两侧 T=24。**本底**改为同一 verbatim 管线的真值互配
+  （clip i vs i+N/2），字段 `floor.fvd_mean`。**代码**：新增 `tools/eval_videovaet_fvd.py`
+  （只做 IO/校验/视图/落盘），`tools/eval_milestone.py` 固定调它（`--prepare` 走 `--floor-only`）；
+  删除 `tools/eval_video_metric_fvd.py`、`tests/test_video_metric_fvd.py`，新增
+  `tests/test_videovaet_fvd.py`。**重算**：E3/E5/E7 三臂（E8 无 `final.pt`，不参与），
+  只重跑评分、不重新生成（E5 帧在原目录，E3/E7 帧在 `/home/huyang/t2v_eval_frames_archive/`），
+  产物 `reports/eval/m1_*_videovaet_20261029/fvd.json`。**作废**：R(2+1)D、16 帧 `eval_fvd.py`、
+  32 帧 SignViP、2026-10-27 `video_metric/styleganv` 的数字（含 E1 129.75 / E2 142.32 / E4 130.85、
+  E3 141.83 / E5 128.53 / E7 124.07），仅作历史追溯；E1/E2/E4 的帧已随 10-27 清盘删除，
+  无法用新口径重算，等 E1 复跑或补生成后再补表。
+
+- **D81 续（2026-10-29）· 52 帧口径为现行正式口径**：用户要求"按完整的上限 52 帧"测试。
+  已把入口改成**每条窗口 `min(52, 源帧数)`**（`--max-frames`，真值同 N 帧 symlink 视图
+  `data/phoenix_frames_first52/`），生成侧 `eval_milestone.py --decode-frames 52`（按 GT 长度封顶），
+  清单扩到全部 642 条源（`reports/eval/samples/m1_test_first52_ids.txt`，ids SHA `feb5565065977755…`）。
+  三臂重新生成并评分（**不是**复用 24 帧帧包）：E5 **969.43** / E3 **985.06** / E7 **993.37**，
+  本底 1503.97/1503.84，N=642，skipped=0；排序 E5 < E3 < E7（1.6% / 0.8% / 2.4%），
+  单 seed 下只能算同量级内略优。**24 帧口径（1107/1112/1118，floor≈1625）作废**。
+  产物 `reports/eval/m1_*_first52_videovaet_20261029/`，台账 `EXPERIMENT.md` exp-117/118/119，
+  规范 `FVD_SPEC.md` §3/§7。本数据窗口分布：556/642（86.6%）用满 52 帧，最短 17 帧→T=16，
+  0 条被跳过（用户提到的"77.8% / 7 条跳过"是 SignViP 那批数据的分布）。

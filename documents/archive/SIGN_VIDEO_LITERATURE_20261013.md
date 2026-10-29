@@ -50,12 +50,6 @@
 
 值得学习的是非手部信号/动作时序与条件融合的重要性，不迁移 pose、光流、深度监督。
 
-### SignViP（NeurIPS 2025）
-
-[Advanced Sign Language Video Generation with Compressed and Quantized Multi-Condition Tokenization](https://arxiv.org/abs/2506.15980)；[作者仓库](https://github.com/umnooob/signvip)。
-
-摘要清楚给出 fine-grained poses / 3D hands → 多条件编码 → FSQ token → 文本 token translator → 视频生成的流程。尽管推理从文本起步，训练仍使用额外动作条件，不能照搬进本项目。
-
 ### Text2SignDiff（DICTA 2025）
 
 [Text2Sign Diffusion: A Generative Approach for Gloss-Free Sign Language Production](https://arxiv.org/html/2509.10845v1)，Feng et al.；DOI 10.1109/DICTA68720.2025.11302423。
@@ -103,7 +97,7 @@
 
 ## 7. 研究覆盖与剩余不确定性
 
-查询围绕直接 text→RGB、pose-free、文本 encoder 微调、条件弱敏感度负结果，以及 SignGen/FlashSign/TuneSL/SignViP 的正式方法。检索到的技术结论只采用原论文、出版商摘要、作者代码或作者单位发布的来源；二手网页仅用于发现题名。
+查询围绕直接 text→RGB、pose-free、文本 encoder 微调、条件弱敏感度负结果，以及 SignGen/FlashSign/TuneSL 的正式方法。检索到的技术结论只采用原论文、出版商摘要、作者代码或作者单位发布的来源；二手网页仅用于发现题名。
 
 已覆盖标准方法、较近文本基线、同类失败、可迁移对齐机制、负结果与代码可用性。仍不确定：SignGen CLIP 更新策略、FlashSign UmT5 是否训练、TuneSL 完整训练设置、SignMoD 完整条件。因此没有提出“解冻一定有效”或将不同口径论文数字与 SignMbart 混表的结论。
 

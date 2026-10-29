@@ -1033,3 +1033,25 @@
   并给出为什么 min-SNR 加权仍应收效的因果链；编号不复用。
 - **证据**：`TODO.md` **P17** 与 **D39**；`FAIL.md` FAIL-033 / FAIL-038 / FAIL-039。
 
+## FAIL-048 · 里程碑1 E3：ref 层看 [ref ; text] 拼接（factor2=2c）
+
+- **来源**：十臂矩阵（TODO **D58**）第 2 因子的 **2c** 选项；执行 TODO **D70**（用户指令「开始跑 E3 实验」）。
+- **做法摘要**：`configs/milestone1/E3.yaml` = base 骨架 + `conditioning.layer_plan=[text,text,text,ref+text]×7`，
+  即 ref 层（3/7/11/15/19/23/27）的 cross-attn 同时吃 reference token 与 text token 的**拼接**，
+  其余 21 层只吃 text；其余因子全 base（1a+4c+3b+5b）。3 卡 from scratch 30k（GPU 0/1/6，effective batch12）。
+- **预注册判据**：与 E1 base 同口径（first24·N=640·官方 I3D-FVD）比较，FVD 更低才算提高。
+- **实测结果**：**FVD 141.83068105122402**（N=640，真值半分 84.89579678321768）。
+  同机同口径唯一可比点 E7（factor1=1b）为 **126.84746316**，E3 高 **14.98**（+11.8%）。
+  训练本身正常收敛：30k 步 27 h 14 m、末 200 步 train/loss 0.01718（E7 末 200 步 0.0166），
+  即 **训练 loss 与 E7 几乎持平甚至更低，但 FVD 明显更差**。
+- **结论**：**2c 未证实提高**。严格的单因子对照对象（E1 base 官方 FVD）本机缺失——E1 训练在
+  `/home/wxy` 主机，官方分数从未产出；因此本轮只能说明「E3 这套配方比 E7 差约 15 FVD」，
+  **不能**把差额单独归因给 2c（E3 与 E7 在 factor1 与 factor2 上同时不同）。
+  另记一条可复用观测：train/loss 与 I3D-FVD 在本配方族里**不同向**（loss 持平、FVD 差 15），
+  训练损失不能当 FVD 的代理指标。
+- **日期 + 是否可复活**：2026-10-26。复活条件：拿到 E1 base 的官方 first24 FVD（同 ids
+  `6f96ad9dda27…`）后，若 E3 < E1 则 2c 复活复评；或设计 2a/2c 的严格单因子对（其余因子与 E1 全同）重跑。
+  编号不复用。
+- **证据**：`reports/eval/m1_E3_first24_20261025/fvd.json`（fvd、ids_file_sha256、real_split_half_fvd）；
+  `runs/m1_E3/metrics.jsonl`、`runs/m1_E3/status.json`、`runs/m1_E3.console.log`、
+  `runs/m1_E3_chain.sh`、`.trae/documents/MILESTONE1_E3_LAUNCH_20261025.json`。

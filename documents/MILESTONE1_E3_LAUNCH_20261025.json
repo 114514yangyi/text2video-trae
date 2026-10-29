@@ -1,0 +1,78 @@
+{
+  "experiment": "m1_E3",
+  "arm": "E3",
+  "factor2": "2c",
+  "launcher_pid": 1773898,
+  "rank_pids": [
+    1773950,
+    1773951,
+    1773952
+  ],
+  "command": [
+    "/data/huyang/miniconda/envs/onvae/bin/python",
+    "-m",
+    "torch.distributed.run",
+    "--standalone",
+    "--nproc_per_node=3",
+    "-m",
+    "t2v.train",
+    "--config",
+    "configs/milestone1/E3.yaml"
+  ],
+  "cuda_visible_devices": "0,1,6",
+  "world_size": 3,
+  "micro_batch_size": 1,
+  "gradient_accumulation_steps": 4,
+  "effective_batch_size": 12,
+  "out_dir": "/data/huyang/trae_projects/text2video/runs/m1_E3",
+  "console_log": "runs/m1_E3.console.log",
+  "auto_eval_chain": "runs/m1_E3_chain.sh (waits for final.pt, then tools/eval_milestone.py --out reports/eval/m1_E3_first24_20261025 --gpu cuda:0)",
+  "chain_pid": 1776004,
+  "launch_unix": 1792905120,
+  "launch_time": "2026-10-25 13:12 +08:00",
+  "launch_head": "e1341e4",
+  "note": "Started from scratch (no E1/E2 weights on this host; E1 ran on /home/wxy). GPUs 0,1,6 were the free cards at launch (>23 GiB free each, GPU<=3 constraint from D65 kept). Recipe identical to E7 except conditioning.layer_plan uses ref+text on the 7 ref blocks (factor2=2c). Startup: step1 loss=0.90315, step10 loss=0.85797, ~3.80 s/step, peak 16.60 GiB; ETA ~31.7 h at this rate.",
+  "checkpoint_1000": {
+    "time": "2026-10-25 14:17",
+    "last_pt_bytes": 14688140625,
+    "loss_at_1000": 0.05243440717458725,
+    "visual_callback": "samples/ 下 2 条样本 × 12-13 帧共 25 个 PNG，14:19 前写完；日志随后恢复 step 1020（同一批 rank PID，无重启）",
+    "note": "回调期间日志出现 VAE 的 \"attention mode is flash\"，属解码路径正常输出，非重启。"
+  },
+  "training_result": {
+    "state": "complete",
+    "final_step": 30000,
+    "elapsed_seconds": 98030.8188287511,
+    "wall_clock": "2026-10-25 13:12:26 → 2026-10-26 16:33:02（27 h 20 m，含 30 次千步 ckpt 与 30 次视觉回调开销）",
+    "final_pt_bytes": 14688143174,
+    "sps_overall": 3.27,
+    "loss_by_5k": {
+      "0-5000": 0.0506,
+      "5000-10000": 0.0249,
+      "10000-15000": 0.0214,
+      "15000-20000": 0.0197,
+      "20000-25000": 0.0187,
+      "25000-30000": 0.0179
+    },
+    "last200_loss": 0.01718,
+    "peak_gpu_gib": 16.608,
+    "samples_png": 1500,
+    "eval_chain": "runs/m1_E3_chain.sh 于 16:33:32 识别 final.pt，已启动 tools/eval_milestone.py（PID 2180556），out=reports/eval/m1_E3_first24_20261025",
+    "samples_note": "30 次回调 × 2 条样本 × 25 帧 PNG"
+  },
+  "eval_result": {
+    "fvd": 141.83068105122402,
+    "num_videos": 640,
+    "ids_sha256": "6f96ad9dda2721b877dea1f08dab7bbf17bb4c6bcb9d90becb665824a69110f6",
+    "real_split_half_fvd": 84.89579678321768,
+    "out_dir": "reports/eval/m1_E3_first24_20261025",
+    "started": "2026-10-26 16:33:32",
+    "finished": "2026-10-26 17:20:57",
+    "compare": {
+      "E7_factor1_1b_fvd": 126.84746316,
+      "delta_fvd": 14.983,
+      "caveat": "E3 与 E7 在 factor1 与 factor2 上同时不同；严格单因子对照 E1 官方 FVD 缺失"
+    },
+    "verdict": "未提高（相对 E7）；见 FAIL.md FAIL-048 / EXPERIMENT exp-112"
+  }
+}

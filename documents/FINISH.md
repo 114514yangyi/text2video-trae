@@ -44,10 +44,6 @@
 
 > 出池时把整条从这里删除，并在 `NOTES.md`（有效）或 `FAIL.md`（无效）写入完整链路。
 
-## F-014 · SignViP 论文条件复现执行器（2026-10-22）
-
-来源D57，用户授权原始test642重跑。产物 `tools/signvip/reproduce.py` 与 `run_reproduction.py`，提交2319729；4个unittest、既有FVD测试与官方编码器roundtrip通过。完整首例24帧/18.5秒，无提前截断。全量运行目录 `reports/eval/signvip_paper_repro_20261022_v2`；2026-10-22 22:37生成642/642及评测全部退出0。最终前32补齐290.291187(N642)，严格32为308.710916(N597)，uniform16为73.669359(N642)，GT偏移1为289.375657(N642)。结果已登记NOTES 2026-10-23 D57及exp-100至103。论文完整协议对应关系仍待确认，不宣称复现成功。
-
 ## F-015 · 完整训练迁移包（2026-10-22）
 
 来源D62。产物 `/var/tmp/text2video_migration_20261022.zip`，包含当前可训练DiT工作区2319729、完整Git历史/.trae、冻结TiTok-CVAE项目及匹配权重、离线mT5、完整v1数据和PHOENIX现存帧。迁移入口独立置于包内migration，不修改现有代码或冻结数据。源环境CPU检查已通过数据读取、文本编码、条件DiT前向、VAE冻结SHA和完整权重加载、帧路径重定位。目标机新环境安装及GPU训练待测试；源机包源SSL故障未能验证全新依赖安装，迁移requirements修正OpenCV/NumPy依赖声明冲突。包内README含详细边界。
@@ -69,3 +65,22 @@
 - 判据/数字：30k 步 22.8 h（末段 2.81 s/步，峰值 13.58 GiB，3 卡 effective batch12，RTX4090+2×RTX3090 混卡）；**FVD 124.073294**（N=640），真值半分本底 84.297514，相对本底 **+47.2%**；生成特征 L2 32.114±6.701。
 - 状态：**已完成待裁决**——E1 base 同口径 FVD 未在本机产出（E1 运行在 `/home/wxy` 主机），本轮只有单点基准，不能与 E1 比较，也不能据此判断"换注入通路更优/更差"。
 - 日期：2026-10-24。
+
+## E5 · 里程碑1 factor4=4a（完全冻结 mT5 文本编码器）— 2026-10-28
+
+| 字段 | 内容 |
+|------|------|
+| TODO 编号 / think 卡 | **D71**（2026-10-26 用户指令「继续跑 E5 实验」，十臂矩阵 D58 的 E5 臂） |
+| 产物 | `runs/m1_E5/final.pt`（13,491,286,618 B，step 30000）；`runs/m1_E5/config.yaml`；`runs/m1_E5/metrics.jsonl`（**含折返行，按 step 去重取最后一条**）；`reports/eval/m1_E5_first24_20261026/{fvd.json,protocol.json,ids.txt,frames/}` |
+| 复现命令 | 训练：`CUDA_VISIBLE_DEVICES=<3卡> python -m torch.distributed.run --standalone --nproc_per_node=3 -m t2v.train --config configs/milestone1/E5.yaml`；续训加 `--resume`；评测：`CUDA_VISIBLE_DEVICES=0 python tools/eval_milestone.py --config runs/m1_E5/config.yaml --checkpoint runs/m1_E5/final.pt --out <新目录> --gpu cuda:0` |
+| 判据 | first24 test 单侧 N=640（同一 ids 清单，SHA `6f96ad9dda27…`）、DDIM50·CFG2.0·GT 长度·seed42·raw 权重；**FVD 为 `video_metric.calculate_fvd(method='styleganv', only_final=True)` 原样实现**（2026-10-27 新规） |
+| 现状数字 | **FVD = 128.53482126748224**；`real_split_half_fvd` = 84.89589457762295；训练峰值显存 **13.56 GiB**（E3 为 16.61 GiB）、续训段均 **2.67 s/步**、末段 loss 1.79e-2 |
+| 状态 | 待测试（需要 E3/E7 用同一 video_metric 口径重算后才能裁决 4a 的优劣；旧副本数字 141.83 / 126.85 不可直接相减） |
+| 日期 | 2026-10-28 |
+
+**过程要点（为什么它不是一个干净的 27 h 一次性 run）**：
+- 08-26 22:02 起 world3（GPU 4/5/6），中途因 `/data` 共享盘被他人在写，两次在存档前检查（`t2v/train.py:180-182` 要求 free ≥ 参数字节×5 = 16.5 GiB）失败并安全退出：18k（16:30）→ 从 17k 续、20k（20:48）→ 从 19k 续；
+- 两次都靠 `last.pt` 完整续训，**没有半截/损坏的检查点**；续训用 `runs/m1_E5_resume.sh` + `--resume`（会校验 config 与 world size）；
+- 最终 30k 于 2026-10-28 05:09 完成；`final.pt` 与 `last.pt` 同时写出后，`last.pt` 已被清理（`final.pt` 保留）；
+- 用户批准清理 `reports/eval/matrix` 的 36 G `.pt`/`.png` 转储（保留全部 `*.json`），使 `/data` 空闲 12 G → 43 G，清单 `reports/eval/_discarded/MATRIX_PURGE_20261027.txt`；
+- 自动化脚本：`runs/m1_E5_autoresume.sh`（status.json 超 420 s 未更新即 `--resume`；v1 用 pgrep 判活会被自身命令行误匹配，已修）、`runs/m1_E5_disk_guard.sh`、`runs/m1_E5_space_watch.sh`。

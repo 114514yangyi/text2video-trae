@@ -1,0 +1,116 @@
+{
+  "experiment": "m1_E5",
+  "arm": "E5",
+  "date": "2026-10-26",
+  "user_instruction": "请你继续跑 E5 实验",
+  "definition": "十臂矩阵（TODO D58）E5 = base 骨架 + factor4=4a（完全冻结 mT5 文本编码器）",
+  "config": "configs/milestone1/E5.yaml",
+  "config_delta_vs_base": {
+    "conditioning.text.num_layers": null,
+    "conditioning.text.trainable": false,
+    "conditioning.text.learning_rate": 0.0,
+    "conditioning.text.gradient_checkpointing": false,
+    "training.out_dir": "runs/m1_E5",
+    "experiment.name": "m1_E5",
+    "arm": "E5",
+    "factor4": "4a"
+  },
+  "launcher": {
+    "script": "runs/m1_E5_launch.sh",
+    "pid": 2313344,
+    "threshold_gib": 18,
+    "poll_seconds": 60,
+    "retry_rule": "训练秒退(<30min)则阈值+1GiB再等，最多3次",
+    "env": {
+      "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+      "HF_HUB_OFFLINE": 1,
+      "TRANSFORMERS_OFFLINE": 1
+    },
+    "cmd": "python -m torch.distributed.run --standalone --nproc_per_node=3 -m t2v.train --config configs/milestone1/E5.yaml"
+  },
+  "eval_chain": {
+    "script": "runs/m1_E5_chain.sh",
+    "pid": 2284170,
+    "out": "reports/eval/m1_E5_first24_20261026",
+    "cmd": "tools/eval_milestone.py --config runs/m1_E5/config.yaml --checkpoint runs/m1_E5/final.pt --out reports/eval/m1_E5_first24_20261026 --gpu cuda:0"
+  },
+  "why_queued": {
+    "observed_free_gib": {
+      "20:22": 15.1,
+      "20:31": 15.1,
+      "20:43": 0,
+      "20:53": 0
+    },
+    "e3_peak_gib": 16.608,
+    "e5_extra_text_encoder_gib": 2.3,
+    "e5_expected_peak_gib": 17.5,
+    "note": "八卡全被他人作业占用，最好一张仅 15.1 GiB；差 ~2.4 GiB，故排队等 3 卡各空出 >=18 GiB"
+  },
+  "disk": {
+    "free_after_deleting_e3_last_pt_gib": 43,
+    "e3_last_pt_deleted": "runs/m1_E3/last.pt（14 G，中间态；final.pt 与评测产物均保留）"
+  },
+  "ledger": {
+    "todo": "D71",
+    "experiment": "exp-113"
+  },
+  "comparison_plan": "同机同口径：官方 first24 I3D-FVD，N=640，ids SHA 6f96ad9dda27…；对照 E7(1b)=126.84746316、E3(2c)=141.83068105122402；E1 base 官方 FVD 仍缺",
+  "status": "training",
+  "started": {
+    "timestamp": "2026-10-26 22:02 (队列轮询 60s 后命中)",
+    "gpus": "4,5,6",
+    "step100_sps_seconds": 3.31,
+    "peak_gpu_gib": 13.55,
+    "text_lr": 0.0,
+    "note": "E3 实测峰值 16.61 GiB；E5 反而只要 13.55 GiB —— 文本编码器冻结后不建优化器状态、不走 grad ckpt，比预估 17.5 GiB 低得多",
+    "eta": "30000 步 × ~3.3 s ≈ 27.5 h，约 2026-10-28 01:30 完成"
+  },
+  "disk_guard": {
+    "script": "runs/m1_E5_disk_guard.sh",
+    "pid": 2546258,
+    "installed_utc8": "2026-10-27T15:18:35+08:00",
+    "reason": "/data free fell 45G(20:30) -> 24G(12:50) -> 8.3G(15:17) because of other users; E5 needs ~13.5G to write final.pt at step 30k",
+    "policy": "if step>=29000 and free<16G: delete runs/m1_E5/last.pt (the 29k snapshot, redundant once final.pt is written); otherwise leave it alone",
+    "impact": "loses resume-from-29k ability; nothing else deleted; final.pt still written at 30k",
+    "log": "runs/m1_E5.disk_guard.log",
+    "autoresume": {
+      "script": "runs/m1_E5_autoresume.sh",
+      "v2_fixed_bug": "v1 used pgrep -f \"t2v.train .*E5.yaml\" which matched its own parent bash -c command line, so it never relaunched; v2 judges liveness from status.json last_update_unix (stale > 420 s => dead)",
+      "policy": "when trainer is dead and no final.pt: relaunch runs/m1_E5_resume.sh (--resume from last.pt)"
+    }
+  },
+  "incident_20261027": {
+    "what": "training aborted at step 18000 checkpoint with RuntimeError: not enough free disk for atomic checkpoint (need ~16.5GiB)",
+    "why": "t2v/train.py save() guard requires free >= sum(params)*5 bytes (16.5GiB); /data shared disk fell to 14GiB because of other users",
+    "lost": "nothing corrupted; last.pt@17000 intact, 1000 steps (18000) not persisted",
+    "disk_actions": [
+      "moved reports/eval/m1_E3_first24_20261025/frames and reports/eval/m1_E7_first24_20261024/frames (2.8G) to /home/huyang/t2v_eval_frames_archive (reversible move; fvd.json/protocol.json/strip kept in place)",
+      "deleted the pre-milestone baseline comparison renders (1.7G freed; whose metrics are recorded in EXPERIMENT.md; regenerable by rerunning that eval)"
+    ],
+    "resume": {
+      "script": "runs/m1_E5_resume.sh",
+      "started_utc8": "2026-10-27T16:42:53+08:00",
+      "gpus": "4,5,6",
+      "command": "torchrun --standalone --nproc_per_node=3 -m t2v.train --config configs/milestone1/E5.yaml --resume",
+      "resumed_from_step": 17000,
+      "notes": "same world size 3 and unchanged config, so exact resume; dist run ids differ (new torchrun)"
+    },
+    "metrics_file_caveat": "runs/m1_E5/metrics.jsonl now contains steps ...17990,18000,17010... (the 18k rows are pre-crash); when analysing, dedupe by step keeping the last occurrence",
+    "bug_fixed": "first resume attempt set CUDA_VISIBLE_DEVICES to a log-contaminated string (function logs went to stdout and were captured by $(...)); fixed by logging to stderr"
+  },
+  "incidents_20261027": [
+    {
+      "time": "2026-10-27T16:30+08:00",
+      "what": "step 18000 checkpoint aborted: RuntimeError not enough free disk for atomic checkpoint (need ~16.5GiB); /data free was 14G",
+      "root_cause": "t2v/train.py:180-182 requires free >= sum(params)*element_size*5 = 16.5 GiB; /data is a shared 15T volume being filled by other users (45G at launch -> 14G)",
+      "loss": "none; last.pt@17000 intact, trainer exited cleanly",
+      "fix": "moved E3/E7 eval frames (2.8G) to /home/huyang/t2v_eval_frames_archive; deleted the pre-milestone baseline comparison renders (1.7G, regenerable); resumed from 17000 at 16:42:53"
+    },
+    {
+      "time": "2026-10-27T20:48+08:00",
+      "what": "step 20000 checkpoint aborted for the same reason; /data free had fallen back to 12G",
+      "loss": "none; last.pt@19000 intact (19k checkpoint succeeded at 18:08)",
+      "fix": "user approved purging reports/eval/matrix; deleted only *.pt (26.2G) and *.png (9.9G) dumps, KEPT all *.json metrics; 37G -> 100M; /data free 12G -> 43G; inventory reports/eval/_discarded/MATRIX_PURGE_20261027.txt; resumed at 20:57 from 19000"
+    }
+  ]
+}

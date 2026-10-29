@@ -10,7 +10,7 @@
 - `t2v/train.py`：单卡/torchrun DDP，分桶有效batch、梯度累积、文本独立LR、可选motion、完整三模块CPU EMA与精确续训。
 - `t2v/milestone_runtime.py`：配置继承、本地路径重定位、CPU状态快照、原子存档、RNG状态。
 - `t2v/pipelines/milestone.py`：GT长度采样、首帧一次、固定前24帧解码、训练可视化，完整raw/EMA一致载入。
-- `tools/eval_milestone.py`：固定清单、显式pilot、官方FVD调用；`tools/eval_fvd.py` 新增迁移帧根路径、严格样本长度及本底报告。
+- `tools/eval_milestone.py`：固定清单、显式pilot、生成后固定调用 `tools/eval_videovaet_fvd.py`（videovaet_fvd 口径，含真值互配本底）。
 - `configs/milestone1/{base,E1..E10}.yaml`：全部十臂仅用配置切换；本轮只启动 E1。
 - 新测试：test_pixart/test_milestone_text/test_milestone_training/test_milestone_eval。
 
@@ -25,7 +25,7 @@
 > ## ⚠️ 2026-10-22 里程碑1 重置（读本节优先，第 1 节以后为历史）
 >
 > 分支 `milestone1-pixart`（从 `main`/`bdf36d1` 切出）把项目当**全新项目**重建：
-> 旧 DiT / Wan / SignViP / 全部探针与消融代码已删除（208 → **45 个跟踪文件**，
+> 旧 DiT / Wan / 全部探针与消融代码已删除（208 → **45 个跟踪文件**，
 > 提交 `88945f0`；同分支 `44b874c` 单独移植了官方 FVD 评测链）。
 > 规格见 `.trae/documents/MILESTONE1_ARCH_PIXART_20261022.md`。
 > **本文件第 1 节「目录结构」及以后描述的是旧世界（`main`/HEAD 分支）**，在本分支上
@@ -43,7 +43,7 @@
 > ├── pipelines/decode.py                     # 冻结 VAE 解码 + 帧/视频写出
 > ├── training_utils.py                       # 种子 / EMA / 原子 ckpt / BucketedBatchSampler
 > └── monitoring.py                           # metrics.jsonl / wandb
-> tools/  eval_fvd.py fetch_i3d_weights.py redecode_fvd_frames.py collect_experiment_table.py
+> tools/  eval_videovaet_fvd.py collect_experiment_table.py
 >         eval_vae_recon.py make_eval_sample.py prune_frames.py gpu_queue.py queue_status.py
 > configs/frozen/vae_h02.yaml                # 冻结 VAE 契约（→ ../RefSign）
 > tests/  run_all + 13 个只依赖上述模块的测试
@@ -133,7 +133,7 @@ text2video/
 │                                     #  固定种子 holdout；readout/桶数在 test 642 上裁决（D10/D26）
 ├── tools/generate.py                 # 离线文本→视频（缓存 video-id 或自由文本）
 ├── tools/eval_t2v.py                 # 批量生成 test 帧（回译输入）+ latents/meta 落盘
-├── tools/eval_fvd.py                 # FVD / 特征 L2（r2plus1d_18）
+├── tools/eval_videovaet_fvd.py       # 正式 FVD 入口（third_party/videovaet_fvd，per-clip 窗口 min(52,N) + 本底）
 ├── tools/eval_vae_recon.py           # 真实 latent 经冻结 VAE 解码（回译/表示上限参照）
 ├── tools/probe_latent_retrieval.py   # latent→文本教师检索诊断（correct/rolled/zero；--dump-ranks 落逐视频排名）
 ├── tools/run_prefix60k_nfe_sweep.sh  # prefix-60k 的 DDIM 步数阶梯（50/100/250/500）同协议对照
@@ -228,8 +228,10 @@ text2video/
 ├── tests/                            # test_dit / test_diffusion / test_data / test_conditioning
 │                                     # + test_dev_eval / test_eval_frames / test_frozen_guard
 │                                     # + test_probe_stats；入口 run_all.py
-├── data/                             # 软链（只读）：phoenix_latents、phoenix_frames
+├── data/                             # 软链（只读）：phoenix_latents、phoenix_frames、phoenix_frames_first52
 ├── models/mt5-base                   # 软链（只读）：预训练文本初始化；微调产物保存于 runs
+├── third_party/videovaet_fvd/        # 正式 FVD 实现（2026-10-29 随仓库发布；含 50.9 MB I3D 权重，
+│                                     #   vendored 文件 sha256 pin 在 MANIFEST.sha256）
 ├── .trae/                            # 知识库（布局见下节）；.trae/reference/DiT = 官方 DiT 克隆（git 忽略）
 └── runs/                             # 训练输出（config/metrics/ckpt/samples）
 ```
@@ -300,6 +302,4 @@ idea 从 FINISH 出池时回填终值与去向；第 5 节指标区由 `tools/co
   dev 门槛必须包括完全等长的不同句子配对；使用 cache manifest/stats 指纹核验兼容性。
   教师冻结，梯度仅穿过视频分支进入预测 x0；CFG 丢文本分支不受句子语义监督。
 
-- `tools/signvip/reproduce.py`：2026-10-22 SignViP发布权重论文条件重跑（原始test、50步完整生成、官方视频/FVD、固定清单及校验）；测试 `tests/test_signvip_reproduce.py`。
-
-- 2026-10-24 D67：正式FVD入口 `tools/eval_signvip_fvd.py`（只做数据IO/固定first24人口/调用）；原样第三方源码 `third_party/signvip/fvd.py` 校验SHA，预处理/特征/距离不再本地实现。`eval_milestone.py`和旧`eval_fvd.py` CLI统一转入此入口。
+- 2026-10-29 起正式FVD入口是 `tools/eval_videovaet_fvd.py`（只做数据IO/全量642人口/每条 `min(52,源帧数)` 真值视图/调用 `videovaet_fvd`）；实现副本随仓库放在 `third_party/videovaet_fvd/`（vendored sha256 pin；`VIDEOVAET_FVD_ROOT` 可指向外部 checkout），per-clip `calculate_fvd(method='videogpt', only_final=True)` 取均值，`eval_milestone.py` 固定以子进程调用该入口；规范见 `.trae/documents/FVD_SPEC.md`。

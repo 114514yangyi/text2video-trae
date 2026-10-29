@@ -51,9 +51,9 @@ frame-0 往哪层、以什么形式注入）以及四个配套因子（motion lo
   不变，取帧规则改为**每条视频从第一帧起取连续 24 帧**（frame 0 → frame 23），
   对应 `tools/eval_fvd.py` 的 `--frame-mode contiguous --num-frames 24`。
   - 与历史 **16 帧均匀** 口径**不可混表**：帧数不同、取帧位置也不同，特征统计不可比。
-  - **不要沿用 `--resize-hw 272 224`**（那是旧 SignViP 预处理）；缩放仍按官方
+  - **不要沿用 `--resize-hw 272 224`**（那是旧预处理口径）；缩放仍按官方
     224 口径（short side 224 + center crop 224），除非有明确理由并在文档写清。
-  - **不足 24 帧的样本跳过**：这会把评测集从 640 条压到 **~613 条**（旧 SignViP 24 帧跑
+  - **不足 24 帧的样本跳过**：这会把评测集从 640 条压到 **~613 条**（旧 24 帧口径
     实测就是 613 条）。因此报表必须写**有效 N**，并把**有效 id 清单落盘复用**，
     10 个臂用**同一份**清单——否则臂间不是同一批样本，比较无效。
     若之后想恢复 N=640，只能改成"末帧补齐到 24 帧"并**重跑全部臂**，两种策略禁止混用。
@@ -127,7 +127,7 @@ cosine/linear 调度、DDIM/DDPM/DPM-Solver++，可以直接复用。
 - 只保留与新骨架无关、可原样复用的底座：冻结 VAE 适配器、mT5 文本适配器、
   latent 数据集与 collate、扩散数学、条件编码器骨架、EMA/ckpt/采样器等训练基建、
   冻结 VAE 解码器、官方 FVD 评测链。
-- **旧的实验数字（FVD 22–26 的 R(2+1)D 口径、SignViP 复现表、回译 BLEU-4）一律不进入
+- **旧的实验数字（FVD 22–26 的 R(2+1)D 口径、旧复现表、回译 BLEU-4）一律不进入
   milestone-1 任何表格**。新表从零开始。
 
 ---
@@ -319,10 +319,10 @@ M1.5 先用 1–2 个臂的短程训练跑通全链路（含 FVD 自检），确
 ## 8. 代码基线与分支现状（本次已完成）
 
 - 分支：`milestone1-pixart`，从 `main`（`bdf36d1`，2026-10-18）切出。
-  不从 HEAD 切的原因：HEAD 侧 25 个提交是 Wan 骨架与 SignViP 复现，本次全部不要。
+  不从 HEAD 切的原因：HEAD 侧 25 个提交是 Wan 骨架与旧复现代码，本次全部不要。
 - 提交 1 `44b874c`：把官方 FVD 评测链（`tools/eval_fvd.py`、`fetch_i3d_weights.py`、
   `redecode_fvd_frames.py`、`collect_experiment_table.py`、`tests/test_eval_fvd.py`）与
-  `AGENTS.md`/`.gitignore` 的 FVD 口径修订从 `8454407` 单独移植过来（不含 Wan/SignViP 训练代码）。
+  `AGENTS.md`/`.gitignore` 的 FVD 口径修订从 `8454407` 单独移植过来（不含 Wan 与旧复现代码）。
 - 提交 2 `88945f0`：清场。**208 → 45 个跟踪文件**，删除 163 个文件约 2.16 万行。
 - 保留清单（45 个）：冻结 VAE 与 mT5 适配器、latent 数据集/collate/normalizer、
   `diffusion/gaussian.py`、`models/{conditioning,length_model,dynamic_loss}.py`、
