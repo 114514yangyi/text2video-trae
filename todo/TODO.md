@@ -1439,3 +1439,22 @@ idea：024 与 026**；其余或需用户裁决（016/020b/005），或属大工
   产物 `reports/eval/m1_E{1,2,4,6,9}_first52_videovaet_20261030/`。
   **待裁决**：E6/E2 是否转入 `FAIL.md`（E6 由"明显变差"改为"无提高"，E2 仍是明确最差），
   E4 是否进 `NOTES`（符号翻转，倾向"噪声内、不下结论"），E5（4a 全冻）是否升级为主线候选。等用户定。
+- **D83 · E8（base-1c，prefix + cross-attn 双通路）实验启动（2026-10-31 用户指令）**：用户"开始跑实验 E8"。
+  E8 = base 唯一改动 factor1 `1a`→`1c`（`conditioning.injection: both`：self-attn 序列前置
+  `cond.select("ref+text")` 前缀 token，同时保留原 cross-attn），factor3 保持 `3b`（**无 motion loss**）；
+  其余同 base（4c 文本 3 层可训、2a `[T,T,T,R]×7`、5b 随机初始化、batch12、lr1e-4、text lr1e-5、
+  seed42、30k、DDIM50/CFG2/raw）。**用途：补齐 E9 缺的那只单因子对照**——E4(1a+3a)=990.63 优于
+  E1(1a+3b)=1013.46，而 E9(1c+3a)=1014.02 与 E1 持平；只有拿到 E8(1c+3b)，才能判断"motion 在双通路下
+  失效"是双通路本身拖后腿，还是 1c 与 3a 相互抵消（TODO **D82 续** 记的缺口）。
+  **前史**：2026-10-28 在另一台机器（8×4090 被别人占满）排过队，step1 OOM 判死、无 `final.pt`，
+  产物归档 `runs/m1_E8_step1_oom_20261028/`（D80）；本机重跑是新的一件事，不是续训。
+  2026-10-31 10:56 启动：本机 4 张 3090 全空，按 ≤3 卡惯例用 **GPU0/1/2**，留 GPU3；
+  `CUDA_VISIBLE_DEVICES=0,1,2 torchrun --standalone --nproc_per_node=3 -m t2v.train
+  --config configs/milestone1/E8.yaml`；world3×accum4=**batch12**；launcher PID 722983、
+  ranks 722992–722994；启动 HEAD `d30429b`。参数与 E1 同（4c 文本）：backbone 607,113,088 +
+  cond 1,481,472 + text 213,325,440（前缀 token 复用现有嵌入，不加参数）。
+  实测 step1 loss 0.90315、step10 0.86040、~3.2–4.0 s/步、峰值 **16.66 GiB/24 GiB**。
+  输出 `/data1/huyang/text2video/runs/m1_E8/`；自动评测链 `/tmp/m1_E8_chain.sh`
+  （等 `complete` → 空闲卡 ≥16 GiB → first52/N=642 videovaet_fvd → `reports/eval/m1_E8_first52_videovaet_20261031`），
+  台账 **exp-129**。预计 30k ≈ 28–34 h（约 2026-11-01 15:00–21:00）。
+  跑完并入 `FVD_SPEC.md` §7.1 全臂表（成为第 9 臂），届时 E9 的交互结论才可裁决。
